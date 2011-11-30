@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="favicon.png"/>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+    "use strict";
+    var socket = io.connect();
+    socket.on("state",function(s){
+    console.log(s);
+    if('HScore' in s){document.getElementById("homeScore").value = s.HScore;}
+    if('VScore' in s){document.getElementById("awayScore").value = s.VScore;}
+    if('Period' in s){document.getElementById("period").value = s.Period;}
+    if('flag' in s){document.getElementById("flag").checked = s.flag == "on";}
+    if('timeout' in s){document.getElementById("timeout").checked = s.timeout == "on";}
+    if('periodPrefix' in s){document.getElementById("periodprefix").value = s.periodPrefix;}
+    if('Poss' in s){document.getElementById("poss_"+s.Poss).checked = true;}
+    if('Down' in s){document.getElementById("down").value = s.Down;}
+    if('ToGo' in s){document.getElementById("togo").value = s.ToGo;}
+    if('BallOn' in s){document.getElementById("onthe").value = s.BallOn;}
+});
+var poss = "";
+function send(data){
+    socket.emit("update", data);
+}
+function timeout(){
+	send({timeout: (this.checked ? "on" : "off")});
+}
+function flag (){
+	send({flag: (this.checked ? "on" : "off")});
+}
+function updateScoreboard(){
+	send({
+	   HScore: document.getElementById("homeScore").value,
+	   VScore: document.getElementById("awayScore").value,
+	   Period: document.getElementById("period").value,
+	   periodPrefix: document.getElementById("periodprefix").value,
+	   Down: document.getElementById("down").value,
+	   ToGo: document.getElementById("togo").value,
+	   BallOn: document.getElementById("onthe").value,
+	   Poss: poss
+    });
+}
+function goToPage(){
+    send({LiveText_PageNo: this.innerHTML});
+}
+window.addEventListener("load",function(){
+	var pageButtons = document.getElementById("pageButtons"); for(var i = 1; i <= 10; i++){
+		var x = document.createElement("button"); x.addEventListener("click",goToPage,false); x.innerHTML = i;pageButtons.appendChild(x);
+	}
+	document.getElementById("flag").addEventListener("change",flag,false);
+	document.getElementById("timeout").addEventListener("change",timeout,false);
+},false);
+var play = function(){send("LiveText_Play = 1");};var pause = function(){send("LiveText_Play = 0");};
+        </script>
+        <title>LiveText Remote Interface</title>
+    </head>
+    <body>
+        <div id="pageButtons">Go to page: </div>
+        <div>
+            <button onclick="play();">Play Animation</button><button onclick="pause();">Pause Animation</button>
+        </div>
+        <form onsubmit="updateScoreboard();return false;">
+            <div>Down: <input type="number" id="down" min="1" max="4" value="1"> To go: <input type="number" min="0" max="100" value="0" id="togo"> On the: <input type="number" id="onthe" min="0" max="100" value="50"></div>
+            <div>Home: <input id="homeScore" type="number" value="0" min="0" max="500"> Away: <input id="awayScore" type="number" value="0" min="0" max="500"></div>
+            <div>Period: <input type="number" min="1" max="4" id="period" value="1"> Period Prefix: <input type="text" id="periodprefix" value="Q" maxlength="1" style="width: 10px;"></div>
+            <div>Possession: <label for="poss_">Off:</label> <input type="radio" name="poss" id="poss_" checked onchange="if(this.checked){window.poss = '';}"> <label for="poss_V">Away:</label> <input type="radio" name="poss" id="poss_V" onchange="if(this.checked){window.poss = 'V';}"> <label for="poss_H">Home:</label> <input type="radio" name="poss" id="poss_H" onchange="if(this.checked){window.poss = 'H';}"></div>
+            <input type="submit" value="Submit">
+        </form>
+        <div><label for="flag">Flag:</label><input type="checkbox" id="flag"> <label for="timeout">Timeout:</label><input type="checkbox" id="timeout"></div>
+    <form onsubmit="send(document.getElementById('text').value);return false;">
+        Send command: <input type="text" style="width: 500px;" id="text"> <input type="submit" value="Send">
+    </form>
+    </body>
+</html>

@@ -1,0 +1,6 @@
+TEST2 = TEST2
+Period = 1
+Down = 4
+ToGo = 10
+BallOn = 10
+timeout = none

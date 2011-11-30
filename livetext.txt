@@ -1,0 +1,4 @@
+DownAndTogo = 
+timeoutsLeftHome = 
+timeoutsLeftAway = 
+GameClk = 0
