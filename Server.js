@@ -299,6 +299,10 @@ var hserver = http.createServer(function(req,res){
 				res.setHeader("Content-Type","image/png");
 				res.end(fs.readFileSync("favicon.png"));
 				break;
+            case "/shortcuts.png":
+				res.setHeader("Content-Type","image/png");
+				res.end(fs.readFileSync("shortcuts.png"));
+				break;
 			case "/stats.json":
 				res.setHeader("Content-Type","application/json");
 				res.end(JSON.stringify(rawFlags));

@@ -51,25 +51,122 @@ window.addEventListener("load",function(){
 	document.getElementById("flag").addEventListener("change",flag,false);
 	document.getElementById("timeout").addEventListener("change",timeout,false);
 },false);
+window.addEventListener("keydown",function(event){
+    try{
+        switch(event.keyCode){
+            case 81: // Q
+                if(isNaN(document.getElementById("homeScore").valueAsNumber)){
+                    document.getElementById("homeScore").value = "0";
+                }
+                document.getElementById("homeScore").stepUp();
+                break;
+            case 65: // A
+                if(isNaN(document.getElementById("homeScore").valueAsNumber)){
+                    document.getElementById("homeScore").value = "0";
+                }
+                document.getElementById("homeScore").stepDown();
+                break;
+            case 87: // W
+                if(isNaN(document.getElementById("awayScore").valueAsNumber)){
+                    document.getElementById("awayScore").value = "0";
+                }
+                document.getElementById("awayScore").stepUp();
+                break;
+            case 83: // S
+                if(isNaN(document.getElementById("awayScore").valueAsNumber)){
+                    document.getElementById("awayScore").value = "0";
+                }
+                document.getElementById("awayScore").stepDown();
+                break;
+            case 37: // Left
+                if(isNaN(document.getElementById("togo").valueAsNumber)){
+                    document.getElementById("togo").value = "0";
+                }
+                document.getElementById("togo").stepDown();
+                break;
+            case 39: // Right
+                if(isNaN(document.getElementById("togo").valueAsNumber)){
+                    document.getElementById("togo").value = "0";
+                }
+                document.getElementById("togo").stepUp();
+                break;
+            case 38: // Up
+                if(isNaN(document.getElementById("onthe").valueAsNumber)){
+                    document.getElementById("onthe").value = "0";
+                }
+                document.getElementById("onthe").stepUp();
+                break;
+            case 40: // Down
+                if(isNaN(document.getElementById("onthe").valueAsNumber)){
+                    document.getElementById("onthe").value = "0";
+                }
+                document.getElementById("onthe").stepDown();
+                break;
+            case 68: // D
+                if(document.getElementById("down").valueAsNumber == 4 || isNaN(document.getElementById("down").valueAsNumber)){
+                    document.getElementById("down").value = 1;
+                }else{
+                    document.getElementById("down").stepUp();
+                }
+                break;
+            case 80: // P
+                switch(window.poss){
+                    case "":
+                        window.poss = "V";
+                        break;
+                    case "V":
+                        window.poss = "H";
+                        break;
+                    case "H":
+                        window.poss = "";
+                        break;
+                }
+                document.getElementById("poss_"+window.poss).checked = true;
+                break;
+            case 70: // F
+                document.getElementById("flag").click();
+                break;
+            case 84: // F
+                document.getElementById("timeout").click();
+                break;
+            case 13: // Enter
+                updateScoreboard();
+                break;
+            case 67: // C
+                document.getElementById("down").value = document.getElementById("togo").value = document.getElementById("onthe").value = "";
+                break;
+            default: 
+                return;
+        }
+    }catch(e){
+        console.log(e);
+    }
+    event.preventDefault();
+},false);
 var play = function(){send("LiveText_Play = 1");};var pause = function(){send("LiveText_Play = 0");};
         </script>
         <title>LiveText Remote Interface</title>
     </head>
     <body>
-        <div id="pageButtons">Go to page: </div>
-        <div>
-            <button onclick="play();">Play Animation</button><button onclick="pause();">Pause Animation</button>
+        <div style="display: block; float: left;">
+            <div id="pageButtons">Go to page: </div>
+            <div>
+                <button onclick="play();">Play Animation</button><button onclick="pause();">Pause Animation</button>
+            </div>
+            <form onsubmit="updateScoreboard();return false;">
+                <div>Down: <input type="number" id="down" min="1" max="4" value="1"> To go: <input type="number" min="0" max="100" value="0" id="togo"> On the: <input type="number" id="onthe" min="0" max="100" value="50"></div>
+                <div>Home: <input id="homeScore" type="number" value="0" min="0" max="500"> Away: <input id="awayScore" type="number" value="0" min="0" max="500"></div>
+                <div>Period: <input type="number" min="1" max="4" id="period" value="1"> Period Prefix: <input type="text" id="periodprefix" value="Q" maxlength="1" style="width: 10px;"></div>
+                <div>Possession: <label for="poss_">Off:</label> <input type="radio" name="poss" id="poss_" checked onchange="if(this.checked){window.poss = '';}"> <label for="poss_V">Away:</label> <input type="radio" name="poss" id="poss_V" onchange="if(this.checked){window.poss = 'V';}"> <label for="poss_H">Home:</label> <input type="radio" name="poss" id="poss_H" onchange="if(this.checked){window.poss = 'H';}"></div>
+                <input type="submit" value="Submit" id="submit">
+            </form>
+            <div><label for="flag">Flag:</label><input type="checkbox" id="flag"> <label for="timeout">Timeout:</label><input type="checkbox" id="timeout"></div>
+            <form onsubmit="send(document.getElementById('text').value);return false;">
+                Send command: <br><textarea style="width: 100px;" id="text"></textarea><br><input type="submit" value="Send">
+            </form>
         </div>
-        <form onsubmit="updateScoreboard();return false;">
-            <div>Down: <input type="number" id="down" min="1" max="4" value="1"> To go: <input type="number" min="0" max="100" value="0" id="togo"> On the: <input type="number" id="onthe" min="0" max="100" value="50"></div>
-            <div>Home: <input id="homeScore" type="number" value="0" min="0" max="500"> Away: <input id="awayScore" type="number" value="0" min="0" max="500"></div>
-            <div>Period: <input type="number" min="1" max="4" id="period" value="1"> Period Prefix: <input type="text" id="periodprefix" value="Q" maxlength="1" style="width: 10px;"></div>
-            <div>Possession: <label for="poss_">Off:</label> <input type="radio" name="poss" id="poss_" checked onchange="if(this.checked){window.poss = '';}"> <label for="poss_V">Away:</label> <input type="radio" name="poss" id="poss_V" onchange="if(this.checked){window.poss = 'V';}"> <label for="poss_H">Home:</label> <input type="radio" name="poss" id="poss_H" onchange="if(this.checked){window.poss = 'H';}"></div>
-            <input type="submit" value="Submit">
-        </form>
-        <div><label for="flag">Flag:</label><input type="checkbox" id="flag"> <label for="timeout">Timeout:</label><input type="checkbox" id="timeout"></div>
-    <form onsubmit="send(document.getElementById('text').value);return false;">
-        Send command: <input type="text" style="width: 500px;" id="text"> <input type="submit" value="Send">
-    </form>
+        <div style="display: block; float: left;">
+            <img src="shortcuts.png" style="width: 320px; height: 500px;">
+        </div>
     </body>
 </html>
