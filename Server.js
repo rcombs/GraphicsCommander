@@ -343,6 +343,9 @@ io.sockets.on("connection", function(socket){
 		for(var i in data){
 			rawFlags[i] = data[i];
 		}
+		for(var i in parseAdds){
+			rawFlags[i] = parseAdds[i]();
+		}
 		writeOutput();
 	});
 })
