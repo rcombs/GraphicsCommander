@@ -226,11 +226,10 @@ var parseAdds = {
 		}
 	},
 	timeoutPath: function(){
-		switch(rawFlags.timeout){
-			case "both":
-				return "C://Users//Truck Laptop//Desktop//Images//Timeouts.png";
-			default:
-				return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		if(rawFlags.flag == "on"){
+			return "C://Users//Truck Laptop//Desktop//Images//Timeouts.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	flagPath: function(){
