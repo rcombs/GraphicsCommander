@@ -226,7 +226,7 @@ var parseAdds = {
 		}
 	},
 	timeoutPath: function(){
-		if(rawFlags.flag == "on"){
+		if(rawFlags.timeout == "on"){
 			return "C://Users//Truck Laptop//Desktop//Images//Timeouts.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
