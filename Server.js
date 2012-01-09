@@ -4,7 +4,6 @@ var path = require("path");
 var fs = require("fs");
 var socketio = require("socket.io");
 var http = require("http");
-var Canvas = require("canvas");
 var rawFlags = {};
 function makeString(hash){
 	var str = "";
@@ -278,7 +277,7 @@ function sendUpdates(){
 	io.sockets.emit("state",rawFlags);
 }
 var ESRes = [];
-server.listen(options.port, 'localhost');
+server.listen(options.port, "0.0.0.0");
 console.log("Socket listening on port "+options.port);
 var hserver = http.createServer(function(req,res){
 	if(req.method == "POST"){
@@ -300,43 +299,44 @@ var hserver = http.createServer(function(req,res){
 				res.end(fs.readFileSync("favicon.png"));
 				break;
             case "/shortcuts.png":
-				res.setHeader("Content-Type","image/png");
-				res.end(fs.readFileSync("shortcuts.png"));
-				break;
-			case "/stats.json":
-				res.setHeader("Content-Type","application/json");
-				res.end(JSON.stringify(rawFlags));
-				break;
-			case "/es":
-				res.setHeader("Content-Type","text/event-stream");
-				ESRes.push(res);
-				res.on("close",function(){
-					ESRes.splice(ESReqs.indexOf(res),1);
-				});
-				sendUpdate(res);
-				break;
-			case "/ocr":
-				res.setHeader("Content-Type","text/html");
-				res.end(fs.readFileSync("OCR.htm"));
-				break;
-			case "/draw":
-				res.setHeader("Content-Type","text/html");
-				res.end(fs.readFileSync("draw.htm"));
-				break;
-            case "/test.mp4":
-				stream("test.mp4",req,res);
-				break;
-			default:
-                if(req.url.toLowerCase().indexOf("/images/") == 0){
-                    if(path.exists("."+req.url)){
-                        res.setHeader("Content-Type","image/png");
-                        res.end(fs.readFileSync("."+req.url));
-                        break;
-                    }
-                }
-				res.setHeader("Content-Type","text/html");
-				res.end(fs.readFileSync("manual.htm"));
-				break;
+			res.setHeader("Content-Type","image/png");
+			res.end(fs.readFileSync("shortcuts.png"));
+			break;
+		case "/stats.json":
+			res.setHeader("Content-Type","application/json");
+			res.end(JSON.stringify(rawFlags));
+			break;
+		case "/es":
+			res.setHeader("Content-Type","text/event-stream");
+			ESRes.push(res);
+			res.on("close",function(){
+				ESRes.splice(ESReqs.indexOf(res),1);
+			});
+			sendUpdate(res);
+			break;
+		case "/ocr":
+			res.setHeader("Content-Type","text/html");
+			res.end(fs.readFileSync("OCR.htm"));
+			break;
+		case "/draw":
+			res.setHeader("Content-Type","text/html");
+			res.end(fs.readFileSync("draw.htm"));
+			break;
+		case "/test.mp4":
+			stream("test.mp4",req,res);
+			break;
+		default:
+			if(req.url.toLowerCase().indexOf("/images/") == 0){
+				if(path.existsSync("."+req.url)){
+					console.log(req.url);
+					res.setHeader("Content-Type","image/png");
+					res.end(fs.readFileSync("."+req.url));
+                       			break;
+				}
+                	}
+			res.setHeader("Content-Type","text/html");
+			res.end(fs.readFileSync("manual.htm"));
+			break;
 		}
 	}
 });
@@ -345,51 +345,17 @@ io.configure(function(){
 	io.set("log level",1);
 	io.set("transports", ["websocket", "xhr-polling"]);
 });
-hserver.listen(options.httpport,"localhost");
+hserver.listen(options.httpport, "0.0.0.0");
 console.log("HTTP server listening on port "+options.httpport);
+var drawNum = 0;
 io.sockets.on("connection", function(socket){
 	socket.emit("state", rawFlags);
-	socket.on("draw", function(data){
-        switch(data.event){
-            case "touchstart":
-                ctx.beginPath();
-                ctx.moveTo(data.coors.x, data.coors.y);
-                ctx.isDrawing = true;
-                break;
-            case "touchmove":
-                if(ctx.isDrawing){
-                    ctx.lineTo(data.coors.x,data.coors.y);
-                    ctx.stroke();
-                }
-                break;
-            case "touchend":
-                if(ctx.isDrawing){
-                    ctx.lineTo(data.coors.x,data.coors.y);
-                    ctx.stroke();
-                    ctx.isDrawing = false;
-                }
-                break;
-        }
-	});
 	socket.on("writeImage", function(data){
-        var stream = canvas.createPNGStream();
-        stream.pipe(fs.createWriteStream("drawings/"+canvas.num+".png"));
-        stream.on("end", function(){
-            rawFlags.drawingPath = path.resolve("drawings/"+canvas.num+".png");
-            canvas.num++;
-            writeOutput();
-        })
-	});
-	socket.on("clearCanvas", function(data){
-	   ctx.restore();
-	});
-	socket.on("chooseImage", function(data){
-	   fs.readFile("images/"+data.image, function(err, src){
-	       if(err) throw err;
-	       var img = new Image;
-	       img.src = src;
-	       ctx.drawImage(img, 0, 0, 1280, 720);
-	   });
+		fs.write("drawings/"+drawNum+".png", data, function(){
+			rawFlags.drawingPath = path.resolve("drawings/"+drawNum+".png");
+			drawNum++;
+			writeOutput();
+		});
 	});
 	socket.on("update", function(data){
 		for(var i in data){
@@ -401,9 +367,3 @@ io.sockets.on("connection", function(socket){
 		writeOutput();
 	});
 });
-
-//Image Manipulation
-var canvas = new Canvas(1280, 720);
-canvas.num = 0;
-var ctx = canvas.getContext("2d");
-ctx.save();
