@@ -9,13 +9,59 @@
 "use strict";
 var socket = io.connect();
 var sketchpad;
+
 document.addEventListener("DOMContentLoaded", function(){
 	sketchpad = document.getElementById("sketchpad");
-	sketchpad.ctx = sketchpad.getContext("2d");
+	var context = sketchpad.ctx = sketchpad.getContext("2d");
+
+// create a drawer which tracks touch movements
+var drawer = {
+   isDrawing: false,
+   touchstart: function(coors, coors2){
+      sketchpad.ctx.beginPath();
+      sketchpad.ctx.moveTo(coors.x, coors.y);
+      this.isDrawing = true;
+   },
+   touchmove: function(coors, coors2){
+      if (this.isDrawing) {
+         sketchpad.ctx.lineTo(coors.x, coors.y);
+         sketchpad.ctx.stroke();
+      }
+   },
+   touchend: function(coors){
+      if (this.isDrawing) {
+         this.isDrawing = false;
+      }
+   }
+};
+
+	// attach the touchstart, touchmove, touchend event listeners.
+	sketchpad.addEventListener('touchstart',draw, false);
+	sketchpad.addEventListener('touchmove',draw, false);
+	sketchpad.addEventListener('touchend',draw, false);
 	document.getElementById("court").addEventListener("load", function(){
 		sketchpad.ctx.drawImage(this, 0, 0, 720, 480);
 	}, false);
+
+// create a function to pass touch events and coordinates to drawer
+function draw(event){
+   // get the touch coordinates
+   if(event.targetTouches.length > 0){
+   	var coors = {
+   	   x: event.targetTouches[0].pageX,
+   	   y: event.targetTouches[0].pageY
+   	};
+	var coors2 = event.targetTouches;
+   }
+   // pass the coordinates to the appropriate handler
+   drawer[event.type](coors,coors2);
+}
+// prevent elastic scrolling
+window.addEventListener('touchmove',function(event){
+  event.preventDefault();
+},false);	// end body:touchmove
 }, false);
+
 		</script>
 		<title>LiveText Remote Interface</title>
 	</head>
