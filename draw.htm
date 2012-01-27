@@ -61,7 +61,12 @@ window.addEventListener('touchmove',function(event){
   event.preventDefault();
 },false);	// end body:touchmove
 }, false);
-
+function sendImage(){
+    var string = document.getElementById("sketchpad").toDataURL("image/png");
+    string = string.split("base64,")[1];
+    console.log(string);
+    socket.emit("writeImage", string);
+}
 		</script>
 		<title>LiveText Remote Interface</title>
 	</head>
@@ -72,6 +77,7 @@ window.addEventListener('touchmove',function(event){
 				</canvas>
 			</div>
 		</div>
+		<button onclick="sendImage();" style="height: 50px;">Update</button>
 		<div style="display: none" id="background_images">
 			<img id="court" src="/images/basketball_court.png">
 			<img id="half_court" src="/images/half_court.png">

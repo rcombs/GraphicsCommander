@@ -351,7 +351,8 @@ var drawNum = 0;
 io.sockets.on("connection", function(socket){
 	socket.emit("state", rawFlags);
 	socket.on("writeImage", function(data){
-		fs.write("drawings/"+drawNum+".png", data, function(){
+        var buf = new Buffer(data, 'base64');
+		fs.writeFile("drawings/"+drawNum+".png", buf, function(){
 			rawFlags.drawingPath = path.resolve("drawings/"+drawNum+".png");
 			drawNum++;
 			writeOutput();

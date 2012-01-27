@@ -143,7 +143,7 @@ window.addEventListener("keydown",function(event){
     }
     event.preventDefault();
 },false);
-var play = function(){send("LiveText_Play = 1");};var pause = function(){send("LiveText_Play = 0");};
+var play = function(){send({LiveText_Play: 1})};};var pause = function(){send({LiveText_Play: 0});};
         </script>
         <title>LiveText Remote Interface</title>
     </head>
