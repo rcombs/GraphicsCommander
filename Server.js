@@ -353,7 +353,7 @@ io.sockets.on("connection", function(socket){
 	socket.on("writeImage", function(data){
         var buf = new Buffer(data, 'base64');
 		fs.writeFile("drawings/"+drawNum+".png", buf, function(){
-			rawFlags.drawingPath = path.resolve("drawings/"+drawNum+".png");
+			rawFlags.drawingPath = path.resolve("drawings/"+drawNum+".png").replace(/\//g,"//");
 			drawNum++;
 			writeOutput();
 		});

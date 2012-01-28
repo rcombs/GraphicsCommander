@@ -27,11 +27,17 @@ var drawer = {
          sketchpad.ctx.lineTo(coors.x, coors.y);
          sketchpad.ctx.stroke();
       }
+	if(sketchpad.live){
+		sendImage();
+	}
    },
    touchend: function(coors){
       if (this.isDrawing) {
          this.isDrawing = false;
       }
+	if(sketchpad.autoUpdate){
+		sendImage();
+	}
    }
 };
 
@@ -40,11 +46,12 @@ var drawer = {
 	sketchpad.addEventListener('touchmove',draw, false);
 	sketchpad.addEventListener('touchend',draw, false);
 	document.getElementById("court").addEventListener("load", function(){
-		sketchpad.ctx.drawImage(this, 0, 0, 720, 480);
+		drawImageFromTag(this);
 	}, false);
 
 // create a function to pass touch events and coordinates to drawer
 function draw(event){
+event.preventDefault();
    // get the touch coordinates
    if(event.targetTouches.length > 0){
    	var coors = {
@@ -56,10 +63,19 @@ function draw(event){
    // pass the coordinates to the appropriate handler
    drawer[event.type](coors,coors2);
 }
-// prevent elastic scrolling
-window.addEventListener('touchmove',function(event){
-  event.preventDefault();
-},false);	// end body:touchmove
+var colors = document.getElementById("colors");
+var colorList = ["black", "red", "orange", "yellow", "green", "blue", "purple", "grey", "white"];
+for(var i = 0; i < colorList.length; i++){
+	var color = colorList[i];
+	var newDiv = document.createElement("div");
+	newDiv.style.backgroundColor = color;
+	newDiv.color = color;
+	newDiv.className = "color";
+	newDiv.addEventListener("click", function(){
+		sketchpad.ctx.strokeStyle = this.color;
+	},false);
+	colors.appendChild(newDiv);
+}
 }, false);
 function sendImage(){
     var string = document.getElementById("sketchpad").toDataURL("image/png");
@@ -67,8 +83,34 @@ function sendImage(){
     console.log(string);
     socket.emit("writeImage", string);
 }
+function drawImageFromId(id){
+	drawImageFromTag(document.getElementById(id));
+}
+function drawImageFromTag(tag){
+	sketchpad.ctx.drawImage(tag, 0, 0, 720, 480);
+	if(sketchpad.autoUpdate || sketchpad.live){
+		sendImage();
+	}
+}
+function clear(){
+	sketchpad.ctx.clearRect(0, 0, 720, 480);
+}
 		</script>
-		<title>LiveText Remote Interface</title>
+		<style>
+#background_images>img, #background_images>div{
+	width: 100px;
+	height: 100px;
+	border: 2px solid black;
+	display: inline-block;
+}
+.color{
+	height: 30px;
+	width: 30px;
+	border: 1px solid black;
+	display: inline-block;
+}
+		</style>
+		<title>LiveText Sketchpad</title>
 	</head>
 	<body>
 		<div style="display: block; float: left;">
@@ -77,10 +119,20 @@ function sendImage(){
 				</canvas>
 			</div>
 		</div>
-		<button onclick="sendImage();" style="height: 50px;">Update</button>
-		<div style="display: none" id="background_images">
-			<img id="court" src="/images/basketball_court.png">
-			<img id="half_court" src="/images/half_court.png">
+		<button onclick="sendImage();" style="height: 50px; padding-bottom: 10px; display: inline-block;">Update</button><br><br>
+		Images:
+		<div style="" id="background_images">
+			<img id="court" src="/images/basketball_court.png" onClick="drawImageFromTag(this);">
+			<img id="half_court" src="/images/half_court.png" onClick="drawImageFromTag(this);">
+			<img id="blank" src="/images/blank.png" onClick="drawImageFromTag(this);">
+		</div>
+		<div>
+		Thickness: <input type="range" id="thickness" min="1" max="10" value="1" onchange="sketchpad.ctx.lineWidth = this.value;">
+		</div>
+		Auto-Update: <input type="checkbox" onchange="sketchpad.autoUpdate = this.checked;">
+		Live: <input type="checkbox" onchange="sketchpad.live = this.checked;">
+		<div id="colors">
+		Colors:
 		</div>
 	</body>
 </html>
