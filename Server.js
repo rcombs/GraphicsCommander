@@ -13,8 +13,11 @@ function makeString(hash){
 	}
 	return str;
 }
-function stream(file, req, res){
-	var stat = fs.statSync(file);
+function stream(file, req, res, type){
+	fs.stat(file, function(err, stat){
+	if(err){
+		throw err;
+	}
 	if (!stat.isFile()){
 		res.end();
 	}
@@ -31,30 +34,42 @@ function stream(file, req, res){
 	if (isNaN(start)){
 		start = 0;
 	}
-	if (isNaN(end) || end == 0) end = stat.size-1;
+	if (isNaN(end) || end == 0) end = stat.size;
 	
 	if (start > end){
 		res.end();
 	}
 	
 	var date = new Date();
+
+	if(range == null){
+		res.writeHead(200, {
+			"Date": date.toUTCString(),
+			"Connection": "close",
+			"Content-Type": type,
+			"Content-Length": stat.size
+		});
+	}else{
 	
 	res.writeHead(206, { // NOTE: a partial http response
 		'Date': date.toUTCString(),
 		'Connection': 'close',
 		// 'Cache-Control':'private',
-		'Content-Type': 'video/mp4',
+		'Content-Type': type,
 		'Content-Length': end - start,
 		'Content-Range': 'bytes '+start+'-'+end+'/'+stat.size,
 		'Accept-Ranges':'bytes',
 		// 'Server':'CustomStreamer/0.0.1',
 		'Transfer-Encoding':'chunked'
 	});
+
+	}
 	
 	var stream = fs.createReadStream(file, {
 		flags: 'r', start: start, end: end
 	});
 	stream.pipe(res);
+	});
 }
 function writeOutput(){
 	runFixes();
@@ -295,12 +310,10 @@ var hserver = http.createServer(function(req,res){
 		switch(req.url.toLowerCase()){
             case "/favicon.ico":
             case "/favicon.png":
-				res.setHeader("Content-Type","image/png");
-				res.end(fs.readFileSync("favicon.png"));
+			stream("favicon.png", req, res, "image/png");
 				break;
             case "/shortcuts.png":
-			res.setHeader("Content-Type","image/png");
-			res.end(fs.readFileSync("shortcuts.png"));
+			stream("shortcuts.png", req, res, "image/png");
 			break;
 		case "/stats.json":
 			res.setHeader("Content-Type","application/json");
@@ -315,27 +328,22 @@ var hserver = http.createServer(function(req,res){
 			sendUpdate(res);
 			break;
 		case "/ocr":
-			res.setHeader("Content-Type","text/html");
-			res.end(fs.readFileSync("OCR.htm"));
+			stream("OCR.htm", req, res, "text/html");
 			break;
 		case "/draw":
-			res.setHeader("Content-Type","text/html");
-			res.end(fs.readFileSync("draw.htm"));
+			stream("draw.htm", req, res, "text/html");
 			break;
 		case "/test.mp4":
-			stream("test.mp4",req,res);
+			stream("test.mp4", req, res, "video/mp4");
 			break;
 		default:
 			if(req.url.toLowerCase().indexOf("/images/") == 0){
 				if(path.existsSync("."+req.url)){
-					console.log(req.url);
-					res.setHeader("Content-Type","image/png");
-					res.end(fs.readFileSync("."+req.url));
+					stream("."+req.url, req, res, "image/png");
                        			break;
 				}
                 	}
-			res.setHeader("Content-Type","text/html");
-			res.end(fs.readFileSync("manual.htm"));
+			stream("Manual.htm", req, res, "text/html");
 			break;
 		}
 	}
