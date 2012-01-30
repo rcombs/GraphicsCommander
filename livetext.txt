@@ -1,4 +1,3 @@
 DownAndTogo = 
 timeoutsLeftHome = 
 timeoutsLeftAway = 
-drawingPath = /Users/11rcombs/Code/Node.js/LiveText-Control/drawings/0.png

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="favicon.png"/>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+"use strict";
+var socket = io.connect();
+var poss = "";
+function send(data){
+    socket.emit("update", data);
+}
+function sendUDP(data){
+	socket.emit("sendUDP", data);
+}
+function goToPage(){
+    send({LiveText_PageNo: this.innerHTML});
+}
+function sendJSON(){
+	var str = document.getElementById("JSON").value;
+	var obj = {};
+	try{
+		obj = JSON.parse(str);
+	}catch(e){
+		alert("Bad JSON!");
+		return;
+	}
+	console.log(obj);
+	sendUDP(obj);
+}
+window.addEventListener("load",function(){
+	var pageButtons = document.getElementById("pageButtons"); for(var i = 1; i <= 10; i++){
+		var x = document.createElement("button");
+		x.addEventListener("click",goToPage,false);
+		x.innerHTML = i;pageButtons.appendChild(x);
+	}
+},false);
+var play = function(){send({LiveText_Play: 1});};var pause = function(){send({LiveText_Play: 0});};
+        </script>
+        <title>LiveText Remote Debugger</title>
+    </head>
+    <body>
+        <div style="display: block; float: left;">
+            <div id="pageButtons">Go to page: </div>
+            <div>
+                <button onclick="play();">Play Animation</button><button onclick="pause();">Pause Animation</button>
+            </div>
+            <form onsubmit="sendJSON(); return false;">
+                Send JSON: <input type="submit" value="Send"/><br/><textarea style="width: 1000px; height: 1000px;" id="JSON">{}</textarea><br/>
+            </form>
+        </div>
+    </body>
+</html>

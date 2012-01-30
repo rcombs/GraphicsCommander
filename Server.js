@@ -4,6 +4,7 @@ var path = require("path");
 var fs = require("fs");
 var socketio = require("socket.io");
 var http = require("http");
+var dgram = require("dgram");
 var rawFlags = {};
 function makeString(hash){
 	var str = "";
@@ -333,6 +334,9 @@ var hserver = http.createServer(function(req,res){
 		case "/draw":
 			stream("draw.htm", req, res, "text/html");
 			break;
+		case "/debug":
+			stream("Debug.htm", req, res, "text/html");
+			break;
 		case "/test.mp4":
 			stream("test.mp4", req, res, "video/mp4");
 			break;
@@ -366,6 +370,9 @@ io.sockets.on("connection", function(socket){
 			writeOutput();
 		});
 	});
+	socket.on("sendUDP", function(data){
+        UDPSendObject(data);
+	});
 	socket.on("update", function(data){
 		for(var i in data){
 			rawFlags[i] = data[i];
@@ -376,3 +383,20 @@ io.sockets.on("connection", function(socket){
 		writeOutput();
 	});
 });
+var udpSocket = dgram.createSocket("udp4");
+udpSocket.bind(50000);
+udpSocket.on("message", function(msg, rinfo){
+	console.log("Quartz Message: \""+msg+"\" from "+rinfo.address+":"+rinfo.port);
+})
+udpSocket.setBroadcast(true);
+function UDPSendObject(obj){
+    UDPSendText(JSON.stringify(obj));
+}
+function UDPSendText(text){
+    var newText = "";
+    for(var i = 0; i < text.length; i++){
+        newText += "\0\0\0"+text[i];
+    }
+    var buffer = new Buffer(newText);
+    udpSocket.send(buffer, 0, buffer.length, 50000, "192.168.1.255");
+}
