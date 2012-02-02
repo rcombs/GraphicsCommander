@@ -1,11 +1,96 @@
 #! /usr/bin/env node
+"use strict";
 var net = require("net");
 var path = require("path");
 var fs = require("fs");
 var socketio = require("socket.io");
 var http = require("http");
 var dgram = require("dgram");
+var util = require("util");
 var rawFlags = {};
+var quartzFlags = {
+	keeps: {
+		showDrawing: false
+	}
+};
+
+/**
+ * Adopted from jquery's extend method. Under the terms of MIT License.
+ *
+ * http://code.jquery.com/jquery-1.4.2.js
+ *
+ * Modified by mscdex to use Array.isArray instead of the custom isArray method
+ */
+function extend() {
+  // copy reference to target object
+  var target = arguments[0] || {}, i = 1, length = arguments.length, deep = false, options, name, src, copy;
+
+  // Handle a deep copy situation
+  if (typeof target === 'boolean') {
+    deep = target;
+    target = arguments[1] || {};
+    // skip the boolean and the target
+    i = 2;
+  }
+
+  // Handle case when target is a string or something (possible in deep copy)
+  if (typeof target !== 'object' && !typeof target === 'function')
+    target = {};
+
+  var isPlainObject = function(obj) {
+    // Must be an Object.
+    // Because of IE, we also have to check the presence of the constructor property.
+    // Make sure that DOM nodes and window objects don't pass through, as well
+    if (!obj || toString.call(obj) !== '[object Object]' || obj.nodeType || obj.setInterval)
+      return false;
+    
+    var has_own_constructor = hasOwnProperty.call(obj, 'constructor');
+    var has_is_property_of_method = hasOwnProperty.call(obj.constructor.prototype, 'isPrototypeOf');
+    // Not own constructor property must be Object
+    if (obj.constructor && !has_own_constructor && !has_is_property_of_method)
+      return false;
+    
+    // Own properties are enumerated firstly, so to speed up,
+    // if last one is own, then all properties are own.
+
+    var last_key;
+    for (var key in obj)
+      last_key = key;
+    
+    return typeof last_key === 'undefined' || hasOwnProperty.call(obj, last_key);
+  };
+
+
+  for (; i < length; i++) {
+    // Only deal with non-null/undefined values
+    if ((options = arguments[i]) !== null) {
+      // Extend the base object
+      for (name in options) {
+        src = target[name];
+        copy = options[name];
+
+        // Prevent never-ending loop
+        if (target === copy)
+            continue;
+
+        // Recurse if we're merging object literal values or arrays
+        if (deep && copy && (isPlainObject(copy) || Array.isArray(copy))) {
+          var clone = src && (isPlainObject(src) || Array.isArray(src)) ? src : Array.isArray(copy) ? [] : {};
+
+          // Never move original objects, clone them
+          target[name] = extend(deep, clone, copy);
+
+        // Don't bring in undefined values
+        } else if (typeof copy !== 'undefined')
+          target[name] = copy;
+      }
+    }
+  }
+
+  // Return the modified object
+  return target;
+};
+
 function makeString(hash){
 	var str = "";
 	for(var i in hash){
@@ -337,6 +422,9 @@ var hserver = http.createServer(function(req,res){
 		case "/debug":
 			stream("Debug.htm", req, res, "text/html");
 			break;
+		case "/manage":
+			stream("Manage.htm", req, res, "text/html");
+			break;
 		case "/test.mp4":
 			stream("test.mp4", req, res, "video/mp4");
 			break;
@@ -362,6 +450,7 @@ console.log("HTTP server listening on port "+options.httpport);
 var drawNum = 0;
 io.sockets.on("connection", function(socket){
 	socket.emit("state", rawFlags);
+	socket.emit("quartzState", quartzFlags);
 	socket.on("writeImage", function(data){
         var buf = new Buffer(data, 'base64');
 		fs.writeFile("drawings/"+drawNum+".png", buf, function(){
@@ -371,6 +460,7 @@ io.sockets.on("connection", function(socket){
 		});
 	});
 	socket.on("sendUDP", function(data){
+		extend(true, quartzFlags, data);
         UDPSendObject(data);
 	});
 	socket.on("update", function(data){
@@ -387,7 +477,7 @@ var udpSocket = dgram.createSocket("udp4");
 udpSocket.bind(50000);
 udpSocket.on("message", function(msg, rinfo){
 	console.log("Quartz Message: \""+msg+"\" from "+rinfo.address+":"+rinfo.port);
-})
+});
 udpSocket.setBroadcast(true);
 function UDPSendObject(obj){
     UDPSendText(JSON.stringify(obj));

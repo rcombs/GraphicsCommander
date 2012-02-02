@@ -1,14 +1,28 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<meta name="apple-mobile-web-app-capable" content="yes">
-		<meta name="viewport" content="user-scalable=no, minimum-scale=1, maximum-scale=1, initial-scale=1"
+		<meta name="apple-mobile-web-app-capable" content="yes"/>
+		<meta name="viewport" content="user-scalable=no, minimum-scale=1, maximum-scale=1, initial-scale=1"/>
 		<link rel="icon" href="favicon.png"/>
 		<script src="/socket.io/socket.io.js"></script>
 		<script>
 "use strict";
-var socket = io.connect();
-var sketchpad;
+var socket;
+var sketchpad, drawer;
+
+function updateState(state){
+	document.getElementById("showDrawing").checked = state.keeps.showDrawing;
+}
+
+function sendLines(){
+	if(drawer && drawer.live && drawer.hasLines){
+		drawer.sendLine(drawer.startCoors, drawer.currentCoors);
+		drawer.startCoors = drawer.currentCoors;
+		drawer.hasLines = false;
+	}
+}
+
+setInterval(sendLines, 50);
 
 function sendUDP(data){
 	socket.emit("sendUDP", data);
@@ -17,75 +31,106 @@ document.addEventListener("DOMContentLoaded", function(){
 	sketchpad = document.getElementById("sketchpad");
 	var context = sketchpad.ctx = sketchpad.getContext("2d");
 
-// create a drawer which tracks touch movements
-var drawer = {
-	isDrawing: false,
-	currentCoors: {x: 0, y: 0},
-	touchstart: function(coors, coors2){
-		sketchpad.ctx.beginPath();
-		sketchpad.ctx.moveTo(coors.x, coors.y);
-		this.currentCoors = coors;
-		this.isDrawing = true;
-	},
-	touchmove: function(coors, coors2){
-		if (this.isDrawing) {
-			sketchpad.ctx.lineTo(coors.x, coors.y);
-			sketchpad.ctx.stroke();
+	// create a drawer which tracks touch movements
+	drawer = {
+		isDrawing: false,
+		color: "000000",
+		thickness: 1,
+		hasLines: false,
+		live: true,
+		startCoors: {x: 0, y: 0},
+		currentCoors: {x: 0, y: 0},
+		setShowDrawing: function(show){
+			sendUDP({
+				keeps: {
+					showDrawing: show
+				}
+			});
+		},
+		setBackground: function(src){
+			sendUDP({
+				keeps: {
+					drawingBackgroundPath: src
+				}
+			});
+		},
+		sendLine: function(oldCoors, newCoors){
+			sendUDP({
+				lineInfo: {
+					drawSignal: true,
+					startX: oldCoors.x,
+					startY: oldCoors.y,
+					endX: newCoors.x,
+					endY: newCoors.y,
+					color: drawer.color,
+					thickness: drawer.thickness
+				}
+			});
+		},
+		touchstart: function(coors, coors2){
+			sketchpad.ctx.beginPath();
+			sketchpad.ctx.moveTo(coors.x, coors.y);
+			this.startCoors = coors;
+			this.currentCoors = coors;
+			this.isDrawing = true;
+		},
+		touchmove: function(coors, coors2){
+			if (this.isDrawing) {
+				sketchpad.ctx.lineTo(coors.x, coors.y);
+				sketchpad.ctx.stroke();
+			}
+			this.hasLines = true;
+			this.currentCoors = coors;
+		},
+		touchend: function(){
+			if (this.isDrawing) {
+				this.isDrawing = false;
+			}
+			if(this.live || this.autoUpdate){
+				sendImage();
+			}
 		}
-		if(sketchpad.live){
-			this.sendLine(currentCoors, coors);
-			//sendImage();
+	};
+	
+	// attach the touchstart, touchmove, touchend event listeners.
+	sketchpad.addEventListener('touchstart', draw, false);
+	sketchpad.addEventListener('touchmove', draw, false);
+	sketchpad.addEventListener('touchend', draw, false);
+	document.getElementById("court").addEventListener("load", function(){
+		drawImageFromTag(this);
+	}, false);
+	
+	// create a function to pass touch events and coordinates to drawer
+	function draw(event){
+		event.preventDefault();
+		// get the touch coordinates
+		var coors, coors2;
+		if(event.targetTouches.length > 0){
+			coors = {
+				x: event.targetTouches[0].pageX,
+				y: event.targetTouches[0].pageY
+			};
+			coors2 = event.targetTouches;
 		}
-		this.currentCoors = coors;
-	},
-	touchend: function(){
-		if (this.isDrawing) {
-			this.isDrawing = false;
-		}
-		if(this.live || this.autoUpdate){
-			this.sendLine(currentCoors, coors);
-			//sendImage();
-		}
-		this.currentCoors = coors;
+		// pass the coordinates to the appropriate handler
+		drawer[event.type](coors,coors2);
 	}
-};
-
-// attach the touchstart, touchmove, touchend event listeners.
-sketchpad.addEventListener('touchstart',draw, false);
-sketchpad.addEventListener('touchmove',draw, false);
-sketchpad.addEventListener('touchend',draw, false);
-document.getElementById("court").addEventListener("load", function(){
-	drawImageFromTag(this);
-}, false);
-
-// create a function to pass touch events and coordinates to drawer
-function draw(event){
-	event.preventDefault();
-	// get the touch coordinates
-	var coors, coors2;
-	if(event.targetTouches.length > 0){
-		coors = {
-			x: event.targetTouches[0].pageX,
-			y: event.targetTouches[0].pageY
-		};
-		coors2 = event.targetTouches;
+	var colors = document.getElementById("colors");
+	var colorList = ["000000", "FF0000", "FFA500", "FFFF00", "00FF00", "0000FF", "FF00FF", "808080", "FFFFFF"];
+	for(var i = 0; i < colorList.length; i++){
+		var color = colorList[i];
+		var newDiv = document.createElement("div");
+		newDiv.style.backgroundColor = "#"+color;
+		newDiv.color = color;
+		newDiv.className = "color";
+		newDiv.addEventListener("click", function(){
+			sketchpad.ctx.strokeStyle = "#"+this.color;
+			drawer.color = this.color;
+		},false);
+		colors.appendChild(newDiv);
 	}
-	// pass the coordinates to the appropriate handler
-	drawer[event.type](coors,coors2);
-}
-var colors = document.getElementById("colors");
-var colorList = ["black", "red", "orange", "yellow", "green", "blue", "purple", "grey", "white"];
-for(var i = 0; i < colorList.length; i++){
-	var color = colorList[i];
-	var newDiv = document.createElement("div");
-	newDiv.style.backgroundColor = color;
-	newDiv.color = color;
-	newDiv.className = "color";
-	newDiv.addEventListener("click", function(){
-		sketchpad.ctx.strokeStyle = this.color;
-	},false);
-	colors.appendChild(newDiv);
-}
+	socket = io.connect();
+	socket.on("quartzState", updateState);
 }, false);
 function sendImage(){
 	var string = document.getElementById("sketchpad").toDataURL("image/png");
@@ -97,7 +142,8 @@ function drawImageFromId(id){
 }
 function drawImageFromTag(tag){
 	sketchpad.ctx.drawImage(tag, 0, 0, 720, 480);
-	if(sketchpad.autoUpdate || sketchpad.live){
+	drawer.setBackground(tag.src);
+	if(drawer.autoUpdate || drawer.live){
 		sendImage();
 	}
 }
@@ -128,18 +174,17 @@ function clear(){
 				</canvas>
 			</div>
 		</div>
-		<button onclick="sendImage();" style="height: 50px; padding-bottom: 10px; display: inline-block;">Update</button><br><br>
+		<button onclick="sendImage();" style="height: 50px; padding-bottom: 10px; display: inline-block;">Update</button><br/><br/>
 		Images:
 		<div style="" id="background_images">
-			<img id="court" src="/images/basketball_court.png" onClick="drawImageFromTag(this);">
-			<img id="half_court" src="/images/half_court.png" onClick="drawImageFromTag(this);">
-			<img id="blank" src="/images/blank.png" onClick="drawImageFromTag(this);">
+			<img id="court" src="/images/basketball_court.png" onClick="drawImageFromTag(this);"/>
+			<img id="half_court" src="/images/half_court.png" onClick="drawImageFromTag(this);"/>
+			<img id="blank" src="/images/blank.png" onClick="drawImageFromTag(this);"/>
 		</div>
 		<div>
-		Thickness: <input type="range" id="thickness" min="1" max="10" value="1" onchange="sketchpad.ctx.lineWidth = this.value;">
+		Thickness: <input type="range" id="thickness" min="1" max="10" value="1" onchange="sketchpad.ctx.lineWidth = drawer.thickness = this.value;"/>
 		</div>
-		Auto-Update: <input type="checkbox" onchange="drawer.autoUpdate = this.checked;">
-		Live: <input type="checkbox" onchange="drawer.live = this.checked;">
+		Show Drawing (V2): <input type="checkbox" onchange="drawer.setShowDrawing(this.checked);" id="showDrawing"/>
 		<div id="colors">
 		Colors:
 		</div>
