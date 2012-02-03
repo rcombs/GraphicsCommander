@@ -488,5 +488,6 @@ function UDPSendText(text){
         newText += "\0\0\0"+text[i];
     }
     var buffer = new Buffer(newText);
+    console.log(buffer.toString().length+" "+buffer.length);
     udpSocket.send(buffer, 0, buffer.length, 50000, "192.168.1.255");
 }
