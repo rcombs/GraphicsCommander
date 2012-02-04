@@ -27,64 +27,64 @@ function extend() {
 
   // Handle a deep copy situation
   if (typeof target === 'boolean') {
-    deep = target;
-    target = arguments[1] || {};
-    // skip the boolean and the target
-    i = 2;
+	deep = target;
+	target = arguments[1] || {};
+	// skip the boolean and the target
+	i = 2;
   }
 
   // Handle case when target is a string or something (possible in deep copy)
   if (typeof target !== 'object' && !typeof target === 'function')
-    target = {};
+	target = {};
 
   var isPlainObject = function(obj) {
-    // Must be an Object.
-    // Because of IE, we also have to check the presence of the constructor property.
-    // Make sure that DOM nodes and window objects don't pass through, as well
-    if (!obj || toString.call(obj) !== '[object Object]' || obj.nodeType || obj.setInterval)
-      return false;
-    
-    var has_own_constructor = hasOwnProperty.call(obj, 'constructor');
-    var has_is_property_of_method = hasOwnProperty.call(obj.constructor.prototype, 'isPrototypeOf');
-    // Not own constructor property must be Object
-    if (obj.constructor && !has_own_constructor && !has_is_property_of_method)
-      return false;
-    
-    // Own properties are enumerated firstly, so to speed up,
-    // if last one is own, then all properties are own.
+	// Must be an Object.
+	// Because of IE, we also have to check the presence of the constructor property.
+	// Make sure that DOM nodes and window objects don't pass through, as well
+	if (!obj || toString.call(obj) !== '[object Object]' || obj.nodeType || obj.setInterval)
+	  return false;
+	
+	var has_own_constructor = hasOwnProperty.call(obj, 'constructor');
+	var has_is_property_of_method = hasOwnProperty.call(obj.constructor.prototype, 'isPrototypeOf');
+	// Not own constructor property must be Object
+	if (obj.constructor && !has_own_constructor && !has_is_property_of_method)
+	  return false;
+	
+	// Own properties are enumerated firstly, so to speed up,
+	// if last one is own, then all properties are own.
 
-    var last_key;
-    for (var key in obj)
-      last_key = key;
-    
-    return typeof last_key === 'undefined' || hasOwnProperty.call(obj, last_key);
+	var last_key;
+	for (var key in obj)
+	  last_key = key;
+	
+	return typeof last_key === 'undefined' || hasOwnProperty.call(obj, last_key);
   };
 
 
   for (; i < length; i++) {
-    // Only deal with non-null/undefined values
-    if ((options = arguments[i]) !== null) {
-      // Extend the base object
-      for (name in options) {
-        src = target[name];
-        copy = options[name];
+	// Only deal with non-null/undefined values
+	if ((options = arguments[i]) !== null) {
+	  // Extend the base object
+	  for (name in options) {
+		src = target[name];
+		copy = options[name];
 
-        // Prevent never-ending loop
-        if (target === copy)
-            continue;
+		// Prevent never-ending loop
+		if (target === copy)
+			continue;
 
-        // Recurse if we're merging object literal values or arrays
-        if (deep && copy && (isPlainObject(copy) || Array.isArray(copy))) {
-          var clone = src && (isPlainObject(src) || Array.isArray(src)) ? src : Array.isArray(copy) ? [] : {};
+		// Recurse if we're merging object literal values or arrays
+		if (deep && copy && (isPlainObject(copy) || Array.isArray(copy))) {
+		  var clone = src && (isPlainObject(src) || Array.isArray(src)) ? src : Array.isArray(copy) ? [] : {};
 
-          // Never move original objects, clone them
-          target[name] = extend(deep, clone, copy);
+		  // Never move original objects, clone them
+		  target[name] = extend(deep, clone, copy);
 
-        // Don't bring in undefined values
-        } else if (typeof copy !== 'undefined')
-          target[name] = copy;
-      }
-    }
+		// Don't bring in undefined values
+		} else if (typeof copy !== 'undefined')
+		  target[name] = copy;
+	  }
+	}
   }
 
   // Return the modified object
@@ -260,7 +260,7 @@ var options = require("nomnom").opts({
 					fs.watchFile(arg, {persistent: true, interval: 60}, function(curr,prev){
 							if(curr.mtime.getTime() != prev.mtime.getTime()){
 								parseScoreboard(arg);
-					   	 	writeOutput();
+							 	writeOutput();
 								sendUpdates();
 							}
 					});
@@ -273,6 +273,21 @@ var options = require("nomnom").opts({
 			}
 				parseScoreboard(arg);
 			}
+		}
+	},
+	startHostedNetwork: {
+		abbr: "s",
+		full: "start-hosted-network",
+		flag: true,
+		help: "Begin acting as a wireless access point on start",
+		callback: function(){
+			require('child_process').spawn("netsh wlan start hostednetwork").on("exit", function(code){
+				if(code == 0){
+					console.log("Successfully started hosted network");
+				}else{
+					console.error("Hosted network not started; threw error code "+code);
+				}
+			});
 		}
 	},
 	preload: {
@@ -394,11 +409,11 @@ var hserver = http.createServer(function(req,res){
 		});
 	}else{
 		switch(req.url.toLowerCase()){
-            case "/favicon.ico":
-            case "/favicon.png":
+			case "/favicon.ico":
+			case "/favicon.png":
 			stream("favicon.png", req, res, "image/png");
 				break;
-            case "/shortcuts.png":
+			case "/shortcuts.png":
 			stream("shortcuts.png", req, res, "image/png");
 			break;
 		case "/stats.json":
@@ -432,9 +447,9 @@ var hserver = http.createServer(function(req,res){
 			if(req.url.toLowerCase().indexOf("/images/") == 0){
 				if(path.existsSync("."+req.url)){
 					stream("."+req.url, req, res, "image/png");
-                       			break;
+					   			break;
 				}
-                	}
+					}
 			stream("Manual.htm", req, res, "text/html");
 			break;
 		}
@@ -452,7 +467,7 @@ io.sockets.on("connection", function(socket){
 	socket.emit("state", rawFlags);
 	socket.emit("quartzState", quartzFlags);
 	socket.on("writeImage", function(data){
-        var buf = new Buffer(data, 'base64');
+		var buf = new Buffer(data, 'base64');
 		fs.writeFile("drawings/"+drawNum+".png", buf, function(){
 			rawFlags.drawingPath = path.resolve("drawings/"+drawNum+".png").replace(/\//g,"//");
 			drawNum++;
@@ -461,7 +476,7 @@ io.sockets.on("connection", function(socket){
 	});
 	socket.on("sendUDP", function(data){
 		extend(true, quartzFlags, data);
-        UDPSendObject(data);
+		UDPSendObject(data);
 	});
 	socket.on("update", function(data){
 		for(var i in data){
@@ -480,15 +495,15 @@ udpSocket.on("message", function(msg, rinfo){
 });
 udpSocket.setBroadcast(true);
 function UDPSendObject(obj){
-    UDPSendText(JSON.stringify(obj));
+	UDPSendText(JSON.stringify(obj));
 }
 function UDPSendText(text){
-    var newText = "";
-    for(var i = 0; i < text.length; i++){
-        newText += "\0\0\0"+text[i];
-    }
-    var buffer = new Buffer(newText.substring(0,420), "utf8");
-    var buffer2 = new Buffer(newText.substring(420), "utf8");
-    udpSocket.send(buffer, 0, buffer.length, 50000, "192.168.1.255");
-    udpSocket.send(buffer2, 0, buffer2.length, 50001, "192.168.1.255");
+	var newText = "";
+	for(var i = 0; i < text.length; i++){
+		newText += "\0\0\0"+text[i];
+	}
+	var buffer = new Buffer(newText.substring(0,420), "utf8");
+	var buffer2 = new Buffer(newText.substring(420), "utf8");
+	udpSocket.send(buffer, 0, buffer.length, 50000, "192.168.1.255");
+	udpSocket.send(buffer2, 0, buffer2.length, 50001, "192.168.1.255");
 }

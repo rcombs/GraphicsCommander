@@ -73,6 +73,9 @@ document.addEventListener("DOMContentLoaded", function(){
 			this.startCoors = coors;
 			this.currentCoors = coors;
 			this.isDrawing = true;
+			if(this.live){
+				sendImage();
+			}
 		},
 		touchmove: function(coors, coors2){
 			if (this.isDrawing) {
@@ -184,7 +187,9 @@ function clear(){
 		<div>
 		Thickness: <input type="range" id="thickness" min="1" max="10" value="1" onchange="sketchpad.ctx.lineWidth = drawer.thickness = this.value;"/>
 		</div>
-		Show Drawing (V2): <input type="checkbox" onchange="drawer.setShowDrawing(this.checked);" id="showDrawing"/>
+		Show Drawing (V2): <input type="checkbox" onchange="drawer.setShowDrawing(this.checked);" id="showDrawing"/><br/>
+		Live (V1): <input type="checkbox" onchange="drawer.live = this.checked;" id="live"/><br/>
+		Autoupdate (V1): <input type="checkbox" onchange="drawer.autoUpdate = this.checked;" id="autoUpdate"/><br/>
 		<div id="colors">
 		Colors:
 		</div>
