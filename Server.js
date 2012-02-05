@@ -281,7 +281,8 @@ var options = require("nomnom").opts({
 		flag: true,
 		help: "Begin acting as a wireless access point on start",
 		callback: function(){
-			require('child_process').spawn("netsh wlan start hostednetwork").on("exit", function(code){
+			var proc = require('child_process').spawn("netsh", ["wlan", "start", "hostednetwork"]);
+			proc.on("exit", function(code){
 				if(code == 0){
 					console.log("Successfully started hosted network");
 				}else{
