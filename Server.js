@@ -7,7 +7,10 @@ var socketio = require("socket.io");
 var http = require("http");
 var dgram = require("dgram");
 var util = require("util");
-var rawFlags = {};
+var rawFlags = {
+	countdown: 0,
+	countdownRunning: false
+};
 var quartzFlags = {
 	keeps: {
 		showDrawing: false
@@ -21,6 +24,25 @@ var quartzFlags = {
  *
  * Modified by mscdex to use Array.isArray instead of the custom isArray method
  */
+function runCountdown(){
+	var write = false;
+	if(rawFlags.countdown > 0 && rawFlags.countdownRunning == true){
+		rawFlags.countdown = Math.max(rawFlags.countdown - 1000, 0);
+		write = true;
+	}else{
+		rawFlags.countdownRunning = false;
+	}
+	if(rawFlags.countdown2 > 0 && rawFlags.countdown2Running == true){
+		rawFlags.countdown2 = Math.max(rawFlags.countdown2 - 1000, 0);
+		write = true;
+	}else{
+		rawFlags.countdown2Running = false;
+	}
+	if(write){
+		writeOutput();
+	}
+}
+setInterval(runCountdown, 1000);
 function extend() {
   // copy reference to target object
   var target = arguments[0] || {}, i = 1, length = arguments.length, deep = false, options, name, src, copy;
@@ -188,6 +210,16 @@ var added = {
 		}
 	}
 };
+function zeroPad(num, numZeros) {
+        var n = Math.abs(num);
+        var zeros = Math.max(0, numZeros - Math.floor(n).toString().length );
+        var zeroString = Math.pow(10,zeros).toString().substr(1);
+        if( num < 0 ) {
+                zeroString = '-' + zeroString;
+        }
+
+        return zeroString+n;
+}
 var fixes = {
 	Down: function(down){
 		switch(down){
@@ -202,6 +234,40 @@ var fixes = {
 			default:
 				return down;
 		}
+	},
+	countdown: function(countdown){
+		if(!rawFlags.showCountdown){
+			return "";
+		}
+		var x = Math.floor(countdown / 1000);
+		var seconds = x % 60;
+		x = Math.floor(x / 60);
+		var minutes = x % 60;
+		x = Math.floor(x / 60);
+		var hours = x;
+		var str = "";
+		if(hours > 0){
+			str += zeroPad(hours, 2) + ":";
+		}
+		str += zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
+		return str;
+	},
+	countdown2: function(countdown){
+		if(!rawFlags.showCountdown2){
+			return "";
+		}
+		var x = Math.floor(countdown / 1000);
+		var seconds = x % 60;
+		x = Math.floor(x / 60);
+		var minutes = x % 60;
+		x = Math.floor(x / 60);
+		var hours = x;
+		var str = "";
+		if(hours > 0){
+			str += zeroPad(hours, 2) + ":";
+		}
+		str += zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
+		return str;
 	},
 	ToGo: function(togo){
 		if(togo <= 10 && togo == rawFlags.BallOn){
@@ -440,6 +506,9 @@ var hserver = http.createServer(function(req,res){
 			break;
 		case "/manage":
 			stream("Manage.htm", req, res, "text/html");
+			break;
+		case "/rockathon":
+			stream("Rockathon.htm", req, res, "text/html");
 			break;
 		case "/test.mp4":
 			stream("test.mp4", req, res, "video/mp4");
