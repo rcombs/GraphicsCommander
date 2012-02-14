@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="favicon.png"/>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+"use strict";
+var socket = io.connect();
+socket.on("state",function(s){
+    if('totalMoney' in s){document.getElementById("totalMoney").value = s.totalMoney;}
+    if('tickerText' in s){document.getElementById("ticker").value = s.tickerText;}
+    if('countdown'  in s){document.getElementById("countdown" ).value = s.countdown ;}
+    if('countdownRunning' in s){document.getElementById("countdownRunning").checked = s.countdownRunning;}
+});
+var poss = "";
+function send(data){
+    socket.emit("update", data);
+}
+function addName(name){
+	document.getElementById("ticker").value += (" | " + name);
+	updateTicker(document.getElementById("ticker").value);
+}
+function updateTicker(tickerText){
+	document.getElementById("ticker").value = tickerText;
+	send({tickerText: tickerText});
+}
+function addMoney(money){
+	setTotalMoney(money + document.getElementById("totalMoney").valueAsNumber);
+}
+function setTotalMoney(money){
+	document.getElementById("totalMoney").value = money;
+	send({totalMoney: money});
+}
+function addDonation(money, name){
+	addName(name + " $" + money);
+}
+function updateCountdownRunning(){
+	send({countdownRunning: document.getElementById("countdownRunning").checked});
+}
+function updateShowCountdown(){
+	send({showCountdown: document.getElementById("showCountdown").checked});
+}
+function setCountdownTime(time){
+	send({countdown: new Date("January 1 1970 "+time+" UTC").getTime()});
+}
+var play = function(){send({LiveText_Play: 1});};var pause = function(){send({LiveText_Play: 0});};
+        </script>
+        <title>LiveText Rockathon Interface</title>
+    </head>
+    <body>
+		<div id="pageButtons">Go to page: </div>
+			<div>
+                		<button onclick="play();">Play Ticker</button><button onclick="pause();">Pause Ticker</button>
+			</div>
+		Add Donation:
+		<div style="padding-left: 20px;">
+			Name: <input type="text" id="name"> Money Value: <input type="number" id="newMoney" value="0.00" step="5"/> <button onclick="addDonation(document.getElementById('newMoney').valueAsNumber, document.getElementById('name').value);">Add Donation</button>
+		</div>
+		Total Money: <input type="number" id="totalMoney" value="0.00" step="5"/> <button onclick="setTotalMoney(document.getElementById('totalMoney').valueAsNumber);">Set Total</button><br>
+		Ticker: <textarea id="ticker"></textarea> <button onclick="updateTicker(document.getElementById('ticker').value);">Update Ticker</button><br>
+		Countdown: <input type="time" id="countdown" value="16:30:15"/><button onclick="setCountdownTime(document.getElementById('countdown').value);">Update Countdown</button> Running Countdown: <input type="checkbox" id="countdownRunning" onChange="updateCountdownRunning();"/> Show Countdown: <input type="checkbox" id="showCountdown" onChange="updateShowCountdown();"/>
+    </body>
+</html>
