@@ -7,10 +7,7 @@ var socketio = require("socket.io");
 var http = require("http");
 var dgram = require("dgram");
 var util = require("util");
-var rawFlags = {
-	countdown: 0,
-	countdownRunning: false
-};
+var rawFlags = {};
 var quartzFlags = {
 	keeps: {
 		showDrawing: false

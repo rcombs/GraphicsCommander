@@ -9,10 +9,33 @@ var socket = io.connect();
 socket.on("state",function(s){
     if('totalMoney' in s){document.getElementById("totalMoney").value = s.totalMoney;}
     if('tickerText' in s){document.getElementById("ticker").value = s.tickerText;}
-    if('countdown'  in s){document.getElementById("countdown" ).value = s.countdown ;}
+    if('countdown'  in s){document.getElementById("countdown").value = msToTime(s.countdown);}
     if('countdownRunning' in s){document.getElementById("countdownRunning").checked = s.countdownRunning;}
+    if('showCountdown' in s){document.getElementById("showCountdown").checked = s.showCountdown;}
+    if('countdown2'  in s){document.getElementById("countdown2").value = msToTime(s.countdown2);}
+    if('countdown2Running' in s){document.getElementById("countdown2Running").checked = s.countdown2Running;}
+    if('showCountdown2' in s){document.getElementById("showCountdown2").checked = s.showCountdown2;}
 });
-var poss = "";
+function zeroPad(num, numZeros) {
+        var n = Math.abs(num);
+        var zeros = Math.max(0, numZeros - Math.floor(n).toString().length );
+        var zeroString = Math.pow(10,zeros).toString().substr(1);
+        if( num < 0 ) {
+                zeroString = '-' + zeroString;
+        }
+
+        return zeroString+n;
+}
+function msToTime(ms){
+	var x = Math.floor(ms / 1000);
+		var seconds = x % 60;
+		x = Math.floor(x / 60);
+		var minutes = x % 60;
+		x = Math.floor(x / 60);
+		var hours = x;
+		var str = zeroPad(hours, 2) + ":" + zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
+		return str;
+}
 function send(data){
     socket.emit("update", data);
 }
@@ -41,7 +64,30 @@ function updateShowCountdown(){
 	send({showCountdown: document.getElementById("showCountdown").checked});
 }
 function setCountdownTime(time){
-	send({countdown: new Date("January 1 1970 "+time+" UTC").getTime()});
+	var date = 1;
+	if(time.length == 8){
+		var t = parseInt(time.substring(0,2), 10);
+		date = ((t / 24) | 0) + 1;
+		var newt = t % 24;
+		time = time.replace(t, newt);
+	}
+	send({countdown: new Date("January "+date+" 1970 "+time+" UTC").getTime()});
+}
+function updateCountdown2Running(){
+	send({countdown2Running: document.getElementById("countdown2Running").checked});
+}
+function updateShowCountdown2(){
+	send({showCountdown2: document.getElementById("showCountdown2").checked});
+}
+function setCountdown2Time(time){
+	var date = 1;
+	if(time.length == 8){
+		var t = parseInt(time.substring(0,2), 10);
+		date = ((t / 24) | 0) + 1;
+		var newt = t % 24;
+		time = time.replace(t, newt);
+	}
+	send({countdown2: new Date("January "+date+" 1970 "+time+" UTC").getTime()});
 }
 var play = function(){send({LiveText_Play: 1});};var pause = function(){send({LiveText_Play: 0});};
         </script>
@@ -58,6 +104,7 @@ var play = function(){send({LiveText_Play: 1});};var pause = function(){send({Li
 		</div>
 		Total Money: <input type="number" id="totalMoney" value="0.00" step="5"/> <button onclick="setTotalMoney(document.getElementById('totalMoney').valueAsNumber);">Set Total</button><br>
 		Ticker: <textarea id="ticker"></textarea> <button onclick="updateTicker(document.getElementById('ticker').value);">Update Ticker</button><br>
-		Countdown: <input type="time" id="countdown" value="16:30:15"/><button onclick="setCountdownTime(document.getElementById('countdown').value);">Update Countdown</button> Running Countdown: <input type="checkbox" id="countdownRunning" onChange="updateCountdownRunning();"/> Show Countdown: <input type="checkbox" id="showCountdown" onChange="updateShowCountdown();"/>
+		Main Countdown: <input type="time" id="countdown" value="81:06:00"/><button onclick="setCountdownTime(document.getElementById('countdown').value);">Update Countdown</button> Running Countdown: <input type="checkbox" id="countdownRunning" onChange="updateCountdownRunning();"/> Show Countdown: <input type="checkbox" id="showCountdown" onChange="updateShowCountdown();"/><br>
+		Secondary Countdown: <input type="time" id="countdown2" value="00:30:00"/><button onclick="setCountdown2Time(document.getElementById('countdown2').value);">Update Countdown</button> Running Countdown: <input type="checkbox" id="countdown2Running" onChange="updateCountdown2Running();"/> Show Countdown: <input type="checkbox" id="showCountdown2" onChange="updateShowCountdown2();"/>
     </body>
 </html>
