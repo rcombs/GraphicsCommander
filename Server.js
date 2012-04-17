@@ -460,84 +460,84 @@ var parseAdds = {
 		}
 	},
 	base1Path: function(){
-		if(parseInt(rawFlags.base1)){
+		if(rawFlags.base1){
 			return "C://Users//Truck Laptop//Desktop//Images//BaseOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	base2Path: function(){
-		if(parseInt(rawFlags.base2)){
+		if(rawFlags.base2){
 			return "C://Users//Truck Laptop//Desktop//Images//BaseOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	base3Path: function(){
-		if(parseInt(rawFlags.base3)){
+		if(rawFlags.base3){
 			return "C://Users//Truck Laptop//Desktop//Images//BaseOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	ball1Path: function(){
-		if(parseInt(rawFlags.ball) > 0){
+		if(rawFlags.ball > 0){
 			return "C://Users//Truck Laptop//Desktop//Images//BallOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	ball2Path: function(){
-		if(parseInt(rawFlags.ball) > 1){
+		if(rawFlags.ball > 1){
 			return "C://Users//Truck Laptop//Desktop//Images//BallOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	ball3Path: function(){
-		if(parseInt(rawFlags.ball) > 2){
+		if(rawFlags.ball > 2){
 			return "C://Users//Truck Laptop//Desktop//Images//BallOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	strike1Path: function(){
-		if(parseInt(rawFlags.strike) > 0){
+		if(rawFlags.strike > 0){
 			return "C://Users//Truck Laptop//Desktop//Images//StrikeOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	strike2Path: function(){
-		if(parseInt(rawFlags.strike) > 1){
+		if(rawFlags.strike > 1){
 			return "C://Users//Truck Laptop//Desktop//Images//StrikeOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	out1Path: function(){
-		if(parseInt(rawFlags.out) > 0){
+		if(rawFlags.out > 0){
 			return "C://Users//Truck Laptop//Desktop//Images//OutOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	out2Path: function(){
-		if(parseInt(rawFlags.out) > 1){
+		if(rawFlags.out > 1){
 			return "C://Users//Truck Laptop//Desktop//Images//OutOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	TopPath: function(){
-		if(parseInt(rawFlags.inningType) == 1){
+		if(rawFlags.inningType == 1){
 			return "C://Users//Truck Laptop//Desktop//Images//TopOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
 	BottomPath: function(){
-		if(parseInt(rawFlags.inningType) == -1){
+		if(rawFlags.inningType == -1){
 			return "C://Users//Truck Laptop//Desktop//Images//BottomOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";

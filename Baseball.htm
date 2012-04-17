@@ -9,17 +9,17 @@ var socket = io.connect();
 socket.on("state",function(s){
     if('HScore' in s){document.getElementById("homeScore").value = s.HScore;}
     if('VScore' in s){document.getElementById("awayScore").value = s.VScore;}
-    if('Period' in s){document.getElementById("period").value = s.Period;}
-    if('flag' in s){document.getElementById("flag").checked = s.flag == "on";}
-    if('timeout' in s){document.getElementById("timeout").checked = s.timeout == "on";}
-    if('periodPrefix' in s){document.getElementById("periodprefix").value = s.periodPrefix;}
-    if('Poss' in s){document.getElementById("poss_"+s.Poss).checked = true;}
-    if('Down' in s){document.getElementById("down").value = s.Down;}
-    if('ToGo' in s){document.getElementById("togo").value = s.ToGo;}
-    if('BallOn' in s){document.getElementById("onthe").value = s.BallOn;}
-    if('goalOn' in s){document.getElementById("goalOn").checked = s.goalOn;}
+    if('Inning' in s){document.getElementById("inning").value = s.Inning;}
+    if(s.inningType != 0){
+        document.getElementById("inning").value += ((s.inning == -1) ? "-" : "+");
+    }
+    if('base1' in s){document.getElementById("base1").checked = s.base1;}
+    if('base2' in s){document.getElementById("base2").checked = s.base2;}
+    if('base3' in s){document.getElementById("base3").checked = s.base3;}
+    if('ball' in s){document.getElementById("ball").value = s.ball;}
+    if('strike' in s){document.getElementById("strike").value = s.strike;}
+    if('out' in s){document.getElementById("out").value = s.out;}
 });
-var poss = "";
 function send(data){
 	if(typeof data == "string"){
 		socket.emit("text", data);
@@ -27,25 +27,20 @@ function send(data){
 	}
     socket.emit("update", data);
 }
-function timeout(){
-	send({timeout: (this.checked ? "on" : "off")});
-}
-function flag (){
-	send({flag: (this.checked ? "on" : "off")});
-}
-function goal (){
-	send({goalOn: this.checked});
-}
 function updateScoreboard(){
+	var inningTypeS = document.getElementById("inning").value.substring(1, 2);
 	send({
 	   HScore: document.getElementById("homeScore").value,
 	   VScore: document.getElementById("awayScore").value,
-	   Period: document.getElementById("period").value,
-	   periodPrefix: document.getElementById("periodprefix").value,
-	   Down: document.getElementById("down").value,
-	   ToGo: document.getElementById("togo").value,
-	   BallOn: document.getElementById("onthe").value,
-	   Poss: poss
+	   Inning: document.getElementById("inning").value.substring(0, 1),
+	   inningType: ((inningTypeS == "-") ? -1 : ((inningTypeS == "+") ? 1 : 0)), 
+	   base1: document.getElementById("base1").checked,
+	   base2: document.getElementById("base2").checked,
+	   base3: document.getElementById("base3").checked,
+	   ball: document.getElementById("ball").valueAsNumber,
+	   strike: document.getElementById("strike").valueAsNumber,
+	   out: document.getElementById("out").valueAsNumber
+
     });
 }
 function goToPage(){
@@ -55,12 +50,9 @@ window.addEventListener("load",function(){
 	var pageButtons = document.getElementById("pageButtons"); for(var i = 1; i <= 10; i++){
 		var x = document.createElement("button"); x.addEventListener("click",goToPage,false); x.innerHTML = i;pageButtons.appendChild(x);
 	}
-	document.getElementById("flag").addEventListener("change",flag,false);
-	document.getElementById("timeout").addEventListener("change",timeout,false);
-	document.getElementById("goalOn").addEventListener("change",goal,false);
 },false);
 window.addEventListener("keydown",function(event){
-	if(!document.getElementById("shortcuts").checked){
+	if(!document.getElementById("shortcuts").checked || event.target != document.body){
 		return;
 	}
     try{
@@ -89,65 +81,84 @@ window.addEventListener("keydown",function(event){
                 }
                 document.getElementById("awayScore").stepDown();
                 break;
-            case 37: // Left
-                if(isNaN(document.getElementById("togo").valueAsNumber)){
-                    document.getElementById("togo").value = "0";
-                }
-                document.getElementById("togo").stepDown();
-                break;
-            case 39: // Right
-                if(isNaN(document.getElementById("togo").valueAsNumber)){
-                    document.getElementById("togo").value = "0";
-                }
-                document.getElementById("togo").stepUp();
-                break;
-            case 38: // Up
-                if(isNaN(document.getElementById("onthe").valueAsNumber)){
-                    document.getElementById("onthe").value = "0";
-                }
-                document.getElementById("onthe").stepUp();
-                break;
-            case 40: // Down
-                if(isNaN(document.getElementById("onthe").valueAsNumber)){
-                    document.getElementById("onthe").value = "0";
-                }
-                document.getElementById("onthe").stepDown();
-                break;
-            case 68: // D
-                if(document.getElementById("down").valueAsNumber == 4 || isNaN(document.getElementById("down").valueAsNumber)){
-                    document.getElementById("down").value = 1;
+            case 74: // J
+                if(document.getElementById("ball").valueAsNumber == 3 || isNaN(document.getElementById("ball").valueAsNumber)){
+                    document.getElementById("ball").value = 0;
                 }else{
-                    document.getElementById("down").stepUp();
+                    document.getElementById("ball").stepUp();
                 }
+                break;
+            case 75: // K
+                if(document.getElementById("strike").valueAsNumber == 2 || isNaN(document.getElementById("strike").valueAsNumber)){
+                    document.getElementById("strike").value = 0;
+                }else{
+                    document.getElementById("strike").stepUp();
+                }
+                break;
+            case 76: // L
+                if(document.getElementById("out").valueAsNumber == 2 || isNaN(document.getElementById("out").valueAsNumber)){
+                    document.getElementById("out").value = 0;
+                }else{
+                    document.getElementById("out").stepUp();
+                }
+                break;
+            case 79: // O
+		var el = document.getElementById("Inning");
+		var str = el.value;
+		// First character is inning number
+		var num = el.substring(0,1);
+		// Second character is top or bottom (+ or -)
+		var tb = el.substring(1,2);
+		if(tb == "-"){
+			tb = "+";
+		}else if(tb == "+"){
+			tb = "-";
+			num = parseInt(num, 10) - 1;
+		}else{
+			tb = "-";
+			if(!num){
+				num = "1";
+			}
+		}
+		el.value = num + tb;
                 break;
             case 80: // P
-                switch(window.poss){
-                    case "":
-                        window.poss = "V";
-                        break;
-                    case "V":
-                        window.poss = "H";
-                        break;
-                    case "H":
-                        window.poss = "";
-                        break;
-                }
-                document.getElementById("poss_"+window.poss).checked = true;
+		var el = document.getElementById("Inning");
+		var str = el.value;
+		// First character is inning number
+		var num = el.substring(0,1);
+		// Second character is top or bottom (+ or -)
+		var tb = el.substring(1,2);
+		if(tb == "+"){
+			tb = "-";
+		}else if(tb == "-"){
+			tb = "+";
+			num = parseInt(num, 10) + 1;
+		}else{
+			tb = "+";
+			if(!num){
+				num = "1";
+			}
+		}
+		el.value = num + tb;
                 break;
-            case 70: // F
-                document.getElementById("flag").click();
+            case 49: // 1
+                var el = document.getElementById("base1");
+		el.checked = !el.checked;
                 break;
-            case 71: // G
-                document.getElementById("goalOn").click();
+            case 50: // 2
+                var el = document.getElementById("base2");
+		el.checked = !el.checked;
                 break;
-            case 84: // T
-                document.getElementById("timeout").click();
+            case 51: // 3
+                var el = document.getElementById("base3");
+		el.checked = !el.checked;
                 break;
             case 13: // Enter
                 updateScoreboard();
                 break;
             case 67: // C
-                document.getElementById("down").value = document.getElementById("togo").value = document.getElementById("onthe").value = "";
+                document.getElementById("ball").value = document.getElementById("strike").value = "";
                 break;
             default: 
                 return;
@@ -168,13 +179,12 @@ var play = function(){send({LiveText_Play: 1});};var pause = function(){send({Li
                 <button onclick="play();">Play Animation</button><button onclick="pause();">Pause Animation</button>
             </div>
             <form onsubmit="updateScoreboard();return false;">
-                <div>Down: <input type="number" id="down" min="1" max="4" value="1"> To go: <input type="number" min="0" max="100" value="0" id="togo"> On the: <input type="number" id="onthe" min="0" max="100" value="50"></div>
+                <div>Ball: <input type="number" id="down" min="1" max="3" value="1"> Strike: <input type="number" id="strike" min="1" max="2" value="1"> Out: <input type="number" id="out" min="1" max="2" value="1"></div>
                 <div>Home: <input id="homeScore" type="number" value="0" min="0" max="500"> Away: <input id="awayScore" type="number" value="0" min="0" max="500"></div>
-                <div>Period: <input type="number" min="1" max="4" id="period" value="1"> Period Prefix: <input type="text" id="periodprefix" value="Q" maxlength="1" style="width: 10px;"></div>
-                <div>Possession: <label for="poss_">Off:</label> <input type="radio" name="poss" id="poss_" checked onchange="if(this.checked){window.poss = '';}"> <label for="poss_V">Away:</label> <input type="radio" name="poss" id="poss_V" onchange="if(this.checked){window.poss = 'V';}"> <label for="poss_H">Home:</label> <input type="radio" name="poss" id="poss_H" onchange="if(this.checked){window.poss = 'H';}"></div>
+                <div>Inning: <input type="text" id="inning" value="1+"></div>
+                <div><label for="base1">Base 1:</label><input type="checkbox" id="base1"><label for="base2">Base 2:</label><input type="checkbox" id="base2"><label for="base3">Base 3:</label><input type="checkbox" id="base3"></div>
                 <input type="submit" value="Submit" id="submit">
             </form>
-            <div><label for="flag">Flag:</label><input type="checkbox" id="flag"> <label for="timeout">Timeout:</label><input type="checkbox" id="timeout"> <label for="goalOn">Goal Flasher:</label><input type="checkbox" id="goalOn"></div>
             <form onsubmit="send(document.getElementById('text').value);return false;">
                 Send command: <br><textarea style="width: 100px;" id="text"></textarea><br><input type="submit" value="Send">
             </form>
