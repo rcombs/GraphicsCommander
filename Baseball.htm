@@ -10,7 +10,7 @@ socket.on("state",function(s){
     if('HScore' in s){document.getElementById("homeScore").value = s.HScore;}
     if('VScore' in s){document.getElementById("awayScore").value = s.VScore;}
     if('Inning' in s){document.getElementById("inning").value = s.Inning;}
-    if(s.inningType != 0){
+    if("inningType" in s && s.inningType != 0){
         document.getElementById("inning").value += ((s.inning == -1) ? "-" : "+");
     }
     if('base1' in s){document.getElementById("base1").checked = s.base1;}
@@ -103,32 +103,32 @@ window.addEventListener("keydown",function(event){
                 }
                 break;
             case 79: // O
-		var el = document.getElementById("Inning");
+		var el = document.getElementById("inning");
 		var str = el.value;
 		// First character is inning number
-		var num = el.substring(0,1);
+		var num = str.substring(0,1);
 		// Second character is top or bottom (+ or -)
-		var tb = el.substring(1,2);
+		var tb = str.substring(1,2);
 		if(tb == "-"){
 			tb = "+";
-		}else if(tb == "+"){
+		}else if(tb == "+" && num !== "1"){
 			tb = "-";
-			num = parseInt(num, 10) - 1;
-		}else{
+			num = Math.max(parseInt(num, 10) - 1, 1);
+		}else if(num !== "1"){
 			tb = "-";
-			if(!num){
+			if(!parseInt(num, 10)){
 				num = "1";
 			}
 		}
 		el.value = num + tb;
                 break;
             case 80: // P
-		var el = document.getElementById("Inning");
+		var el = document.getElementById("inning");
 		var str = el.value;
 		// First character is inning number
-		var num = el.substring(0,1);
+		var num = str.substring(0,1);
 		// Second character is top or bottom (+ or -)
-		var tb = el.substring(1,2);
+		var tb = str.substring(1,2);
 		if(tb == "+"){
 			tb = "-";
 		}else if(tb == "-"){
@@ -136,7 +136,7 @@ window.addEventListener("keydown",function(event){
 			num = parseInt(num, 10) + 1;
 		}else{
 			tb = "+";
-			if(!num){
+			if(!parseInt(num, 10)){
 				num = "1";
 			}
 		}
@@ -158,7 +158,7 @@ window.addEventListener("keydown",function(event){
                 updateScoreboard();
                 break;
             case 67: // C
-                document.getElementById("ball").value = document.getElementById("strike").value = "";
+                document.getElementById("ball").value = document.getElementById("strike").value = 0;
                 break;
             default: 
                 return;
@@ -179,7 +179,7 @@ var play = function(){send({LiveText_Play: 1});};var pause = function(){send({Li
                 <button onclick="play();">Play Animation</button><button onclick="pause();">Pause Animation</button>
             </div>
             <form onsubmit="updateScoreboard();return false;">
-                <div>Ball: <input type="number" id="down" min="1" max="3" value="1"> Strike: <input type="number" id="strike" min="1" max="2" value="1"> Out: <input type="number" id="out" min="1" max="2" value="1"></div>
+                <div>Ball: <input type="number" id="ball" min="1" max="3" value="0"> Strike: <input type="number" id="strike" min="1" max="2" value="0"> Out: <input type="number" id="out" min="1" max="2" value="0"></div>
                 <div>Home: <input id="homeScore" type="number" value="0" min="0" max="500"> Away: <input id="awayScore" type="number" value="0" min="0" max="500"></div>
                 <div>Inning: <input type="text" id="inning" value="1+"></div>
                 <div><label for="base1">Base 1:</label><input type="checkbox" id="base1"><label for="base2">Base 2:</label><input type="checkbox" id="base2"><label for="base3">Base 3:</label><input type="checkbox" id="base3"></div>
