@@ -1,1 +1,5 @@
 HScore = 0
+VScore = 0
+Period = 1
+periodPrefix = Q
+Timeout = Off

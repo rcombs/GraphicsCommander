@@ -36,6 +36,14 @@ var quartzFlags = {
 		showDrawing: false
 	}
 };
+var flashOn = false;
+
+setInterval(function(){
+	flashOn = !flashOn;
+	if(rawFlags.goalOn){
+		writeOutput();
+	}
+}, 250);
 
 /**
  * The following method is adopted from jquery's extend method. Under the terms of MIT License, listed below:
@@ -237,7 +245,7 @@ var added = {
 		}else{
 			return "";
 		}
-	}
+	},
 };
 function zeroPad(num, numZeros) {
         var n = Math.abs(num);
@@ -429,6 +437,13 @@ var parseAdds = {
 				return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
 	},
+	goalPath: function(){
+		if(rawFlags.goalOn && flashOn){
+			return "C://Users//Truck Laptop//Desktop//Images//Goal.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
 	awayPossPath: function(){
 		switch(rawFlags.Poss){
 			case "V":
@@ -440,6 +455,90 @@ var parseAdds = {
 	timeoutPath: function(){
 		if(rawFlags.timeout == "on"){
 			return "C://Users//Truck Laptop//Desktop//Images//Timeouts.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	base1Path: function(){
+		if(parseInt(rawFlags.base1)){
+			return "C://Users//Truck Laptop//Desktop//Images//BaseOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	base2Path: function(){
+		if(parseInt(rawFlags.base2)){
+			return "C://Users//Truck Laptop//Desktop//Images//BaseOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	base3Path: function(){
+		if(parseInt(rawFlags.base3)){
+			return "C://Users//Truck Laptop//Desktop//Images//BaseOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	ball1Path: function(){
+		if(parseInt(rawFlags.ball) > 0){
+			return "C://Users//Truck Laptop//Desktop//Images//BallOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	ball2Path: function(){
+		if(parseInt(rawFlags.ball) > 1){
+			return "C://Users//Truck Laptop//Desktop//Images//BallOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	ball3Path: function(){
+		if(parseInt(rawFlags.ball) > 2){
+			return "C://Users//Truck Laptop//Desktop//Images//BallOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	strike1Path: function(){
+		if(parseInt(rawFlags.strike) > 0){
+			return "C://Users//Truck Laptop//Desktop//Images//StrikeOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	strike2Path: function(){
+		if(parseInt(rawFlags.strike) > 1){
+			return "C://Users//Truck Laptop//Desktop//Images//StrikeOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	out1Path: function(){
+		if(parseInt(rawFlags.out) > 0){
+			return "C://Users//Truck Laptop//Desktop//Images//OutOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	out2Path: function(){
+		if(parseInt(rawFlags.out) > 1){
+			return "C://Users//Truck Laptop//Desktop//Images//OutOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	TopPath: function(){
+		if(parseInt(rawFlags.inningType) == 1){
+			return "C://Users//Truck Laptop//Desktop//Images//TopOn.png";
+		}else{
+			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
+		}
+	},
+	BottomPath: function(){
+		if(parseInt(rawFlags.inningType) == -1){
+			return "C://Users//Truck Laptop//Desktop//Images//BottomOn.png";
 		}else{
 			return "C://Users//Truck Laptop//Desktop//Images//Blank.png";
 		}
@@ -542,6 +641,9 @@ var hserver = http.createServer(function(req,res){
 		case "/test.mp4":
 			stream("test.mp4", req, res, "video/mp4");
 			break;
+		case "/baseball":
+			stream("Baseball.htm", req, res, "text/html");
+			break;
 		default:
 			if(req.url.toLowerCase().indexOf("/images/") == 0){
 				if(path.existsSync("."+req.url)){
@@ -584,6 +686,10 @@ io.sockets.on("connection", function(socket){
 		for(var i in parseAdds){
 			rawFlags[i] = parseAdds[i]();
 		}
+		writeOutput();
+	});
+	socket.on("text", function(text){
+		parseData(text);
 		writeOutput();
 	});
 });

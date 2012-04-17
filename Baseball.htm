@@ -60,7 +60,7 @@ window.addEventListener("load",function(){
 	document.getElementById("goalOn").addEventListener("change",goal,false);
 },false);
 window.addEventListener("keydown",function(event){
-	if(!document.getElementById("shortcuts").checked || event.target != document.body){
+	if(!document.getElementById("shortcuts").checked){
 		return;
 	}
     try{

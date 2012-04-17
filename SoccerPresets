@@ -1,0 +1,7 @@
+HScore = 0
+
+VScore = 0
+Period = 1
+periodPrefix = H
+Timeout = Off
+GameClk = 00:00
