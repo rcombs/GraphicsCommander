@@ -30,6 +30,7 @@ var socketio = require("socket.io");
 var http = require("http");
 var dgram = require("dgram");
 var util = require("util");
+var mime = require("mime");
 var rawFlags = {};
 var quartzFlags = {
 	keeps: {
@@ -606,10 +607,10 @@ var hserver = http.createServer(function(req,res){
 		switch(req.url.toLowerCase()){
 			case "/favicon.ico":
 			case "/favicon.png":
-			stream("favicon.png", req, res, "image/png");
-				break;
+                stream("favicon.png", req, res, "image/png");
+            break;
 			case "/shortcuts.png":
-			stream("shortcuts.png", req, res, "image/png");
+                stream("shortcuts.png", req, res, "image/png");
 			break;
 		case "/stats.json":
 			res.setHeader("Content-Type","application/json");
@@ -646,7 +647,7 @@ var hserver = http.createServer(function(req,res){
 			break;
 		default:
             if(fs.existsSync("."+req.url)){
-                stream("."+req.url, req, res, "image/png");
+                stream("."+req.url, req, res, mime.lookup(req.url));
                                break;
             }
 			stream("Manual.htm", req, res, "text/html");

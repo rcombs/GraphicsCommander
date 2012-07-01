@@ -192,9 +192,7 @@ function loadFile(){
         if(d.type == 0 || d.type == 3 || d.type == 6){
             d.points = displays[i].points;
         }else{
-            console.log(displays[i].points);
             d.points = matrixToPointArray(perstrans($M(displays[i].points), conversionMatrix));
-            console.log(d.points);
         }
         d.name = displays[i].name;
         d.fieldName = displays[i].fieldName;
@@ -298,8 +296,6 @@ function deleteField(number,noConfirm){
                         break;
                     }else if(displays[i].points[j] > number){
                         displays[i].points[j]--;
-                    }else{
-                        console.log(displays[i].points[j],i,j,number);
                     }
                 }
             }
