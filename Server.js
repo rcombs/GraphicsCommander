@@ -356,7 +356,7 @@ var options = require("nomnom").opts({
 		list: true,
 		help: "Scoreboard file to poll automatically",
 		callback: function(arg){
-			if(!path.existsSync(arg)){
+			if(!fs.existsSync(arg)){
 				return "File "+arg+" does not exist!";
 			}else{
 			try{
@@ -400,7 +400,7 @@ var options = require("nomnom").opts({
 		list: true,
 		help: "Scoreboard file to parse once on start",
 		callback: function(arg){
-			if(!path.existsSync(arg)){
+			if(!fs.existsSync(arg)){
 				return "File "+arg+" does not exist!";
 			}else{
 				parseScoreboard(arg);
@@ -645,12 +645,10 @@ var hserver = http.createServer(function(req,res){
 			stream("Baseball.htm", req, res, "text/html");
 			break;
 		default:
-			if(req.url.toLowerCase().indexOf("/images/") == 0){
-				if(path.existsSync("."+req.url)){
-					stream("."+req.url, req, res, "image/png");
-					   			break;
-				}
-					}
+            if(fs.existsSync("."+req.url)){
+                stream("."+req.url, req, res, "image/png");
+                               break;
+            }
 			stream("Manual.htm", req, res, "text/html");
 			break;
 		}
