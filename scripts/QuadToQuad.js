@@ -1,3 +1,8 @@
+/*
+The contents of this file may be used for any purpose. It is exempt from the terms of the licensing agreement given in the readme file of this repository.
+*/
+
+//"use strict";
 function Det(a, b, c, d){
     return a*d - b*c;
 }
