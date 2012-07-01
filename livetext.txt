@@ -1,3 +1,0 @@
-DownAndTogo = 
-timeoutsLeftHome = 
-timeoutsLeftAway = 
