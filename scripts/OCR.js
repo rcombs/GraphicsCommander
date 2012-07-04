@@ -1,10 +1,26 @@
 /*
-The contents of this file may be used for any purpose. It is exempt from the terms of the licensing agreement given in the readme file of this repository.
+The contents of this file may be used for any purpose, with the exception of use relating to graphics generation for live TV productions. It is otherwise exempt from the terms of the licensing agreement given in the readme file of this repository.
 */
 "use strict";
 var socket = io.connect();
 if(typeof requestAnimationFrame == "undefined" && typeof webkitRequestAnimationFrame != "undefined"){
     window.requestAnimationFrame = webkitRequestAnimationFrame;
+}
+
+var pointMatrices = {
+    7: $M([[0.5,0],[0,0.25],[1,0.25],[0.5,0.5],[0,0.75],[1,0.75],[0.5,1]])
+}
+
+var lineMatrices = {
+    7: $M([[0,.5],[0,0],[1,0],[1,.5],[0,.5],[0,1],[1,1],[1,.5]])
+}
+
+var cornerColors = [];
+var cornerDifferenceThreshold = 40;
+var maxCornerMovement = 10;
+
+function getDistance(point1, point2){
+    return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
 }
 
 var Display = function(type, context, threshold){
@@ -25,14 +41,7 @@ Display.prototype.getPointValue = function(i){
         if(this.type == 3){
             return displays[this.points[i]].value;
         }else{
-            var point = this.context.getImageData(
-                this.points[i].x,
-                this.points[i].y,
-                1,
-                1
-            ).data;
-            var bright = (point[0]+point[1]+point[2])/3;
-            return bright > this.threshold;
+            return interprolatePixels(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3).data).bright > this.threshold;
         }
     }else{
         return false;
@@ -119,7 +128,13 @@ function matrixToPointArray(matrix){
 var square = $M([[0,0], [1,0], [1,1], [0,1]]);
 
 var displays = [];
-var corners = [];
+var corners = [
+    {x: 0, y: 0},
+    {x: 640, y: 0},
+    {x: 640, y: 480},
+    {x: 0, y: 480}
+];
+
 function updateSaveFileList(selectedName){
     var optgroup = document.getElementById("files");
     optgroup.innerHTML = "";
@@ -158,6 +173,9 @@ function saveFile(){
         }else{
             x.points = perstrans(pointArrayToMatrix(displays[i].points), conversionMatrix).elements;
         }
+        if(displays[i].corners){
+            x.corners = perstrans(pointArrayToMatrix(displays[i].corners), conversionMatrix).elements;
+        }
         x.threshold = displays[i].threshold;
         x.name = displays[i].name;
         x.fieldName = displays[i].fieldName;
@@ -189,10 +207,15 @@ function loadFile(){
     var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
     for(var i = 0; i < displays.length; i++){
         var d = new Display(displays[i].type,ctx,displays[i].threshold);
-        if(d.type == 0 || d.type == 3 || d.type == 6){
+        if(d.type == 3 || d.type == 6){
             d.points = displays[i].points;
         }else{
             d.points = matrixToPointArray(perstrans($M(displays[i].points), conversionMatrix));
+            d.matrixPoints = displays[i].points;
+        }
+        if(displays[i].corners){
+            d.corners = matrixToPointArray(perstrans($M(displays[i].corners), conversionMatrix));
+            d.matrixCorners = displays[i].corners;
         }
         d.name = displays[i].name;
         d.fieldName = displays[i].fieldName;
@@ -201,14 +224,56 @@ function loadFile(){
     }
 }
 
+navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || false;
+window.URL = window.URL || window.webkitURL || window.mozURL || false;
+
 document.addEventListener("DOMContentLoaded",function(){
-    document.getElementById("canvas").addEventListener("click",function(){
+    if(location.search != "?prerec" && navigator.getUserMedia){
+        navigator.webkitGetUserMedia({audio:false, video:true}, function(stream){ 
+            document.getElementById("img").src = URL.createObjectURL(stream);
+        }, function(err){
+            console.log("Stream refused: " + err);
+        });
+    }
+    document.getElementById("canvas").addEventListener("click", function(){
         if(!rendering){
             rendering = true;
             render();
         }
-    },false);
-    canvas.addEventListener("mouseup",function(event){
+    }, false);
+    canvas.addEventListener("mousedown", function(event){
+        if(this.currentPoints){
+            var distance = 100000000;
+            for(var i = 0; i < this.currentPoints.length; i++){
+                var newDistance = getDistance(this.currentPoints[i], {x: event.offsetX, y: event.offsetY});
+                if(newDistance < distance){
+                    distance = newDistance;
+                    this.currentPoint = this.currentPoints[i];
+                }
+            }
+        }
+        if(this.currentPoint){
+            this.currentPoint.x = event.offsetX;
+            this.currentPoint.y = event.offsetY;
+        }
+        if(this.downEvent){
+            this.downEvent();
+        }
+        this.mousedDown = true;
+    }, false);
+    canvas.addEventListener("mousemove", function(event){
+        if(this.mousedDown){
+            if(this.currentPoint){
+                this.currentPoint.x = event.offsetX;
+                this.currentPoint.y = event.offsetY;
+            }
+            if(this.moveEvent){
+                this.moveEvent();
+            }
+        }
+    }, false);
+    canvas.addEventListener("mouseup", function(event){
+        this.mousedDown = false;
         if(this.currentPoint){
             this.currentPoint.x = event.offsetX;
             this.currentPoint.y = event.offsetY;
@@ -216,7 +281,7 @@ document.addEventListener("DOMContentLoaded",function(){
         if(this.nextEvent){
             this.nextEvent();
         }
-    },false);
+    }, false);
     if(!localStorage.saves){
         localStorage.saves = "{}";
     }
@@ -234,8 +299,54 @@ document.addEventListener("DOMContentLoaded",function(){
         var d = new Display(type,document.getElementById("canvas").getContext("2d"),110);
         makeDialog(type);
         startInput(type,d);
-    },false);
+    }, false);
+    document.getElementById("setCorners").addEventListener("click", function(){
+        if(this.active){
+            document.getElementById("canvas").currentPoints = false;
+            shapePoints = [];
+            shapeEnd = false;
+            this.innerHTML = "Set Corners";
+            this.active = false;
+            dots = [];
+            localStorage.lastCorners = JSON.stringify(corners);
+        }else{
+            document.getElementById("canvas").currentPoints = corners;
+            shapePoints = corners;
+            shapeEnd = true;
+            this.innerHTML = "Done";
+            this.active = true;
+            document.getElementById("canvas").moveEvent = function(){
+                var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
+                for(var i = 0; i < displays.length; i++){
+                    if(displays[i].type == 3 || displays[i].type == 6){
+                        continue;
+                    }
+                    var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
+                    for(var j = 0; j < newPoints.length; j++){
+                        displays[i].points[j].x = newPoints[j].x;
+                        displays[i].points[j].y = newPoints[j].y;
+                    }
+                    if(displays[i].type == 7){
+                        var newShape = matrixToPointArray(perstrans($M(displays[i].matrixCorners), conversionMatrix));
+                    }
+                }
+            }
+            setAllDots();
+        }
+    }, false);
 },false);
+
+function setAllDots(){
+    dots = [];
+    for(var i = 0; i < displays.length; i++){
+        if(displays[i].type == 3 || displays[i].type == 6){
+            continue;
+        }
+        for(var j = 0; j < displays[i].points.length; j++){
+            dots.push(displays[i].points[j]);
+        }
+    }
+}
 
 var dialogs = {
     0: 'Clock on the <span id="pos">top-left</span> corner.',
@@ -245,12 +356,12 @@ var dialogs = {
     4: 'Click on the pixel for <span id="pos">home</span>.',
     5: 'Click on the <span id="pos">first</span> pixel.',
     6: 'Enter the fixed string <input type="text" placeholder="here" id="fixedText"></input><button onclick="finishFixed();">OK</button>',
-    7: 'Click on the <span id="pos">top</span> segment.'
+    7: 'Click on the <span id="pos">top-left</span> corner.'
 };
 
 function finishFixed(){
     fixedDisplay.points[0] = document.getElementById("fixedText").value;
-    finishNewInput(fixedDisplay, 6);
+    finishNewInput(fixedDisplay);
     buildingFixed = false;
 }
 
@@ -263,26 +374,98 @@ function finishComposite(){
     buildingComposite = false;
 }
 
+function interprolatePixels(canvasImageData){
+    var totalPixels = canvasImageData.length/4;
+    var r = 0,
+        g = 0,
+        b = 0;
+    for(var i = 0; i < canvasImageData.length; i += 4){
+        r += canvasImageData[i];
+        g += canvasImageData[i + 1];
+        b += canvasImageData[i + 2];
+    }
+    r /= totalPixels;
+    g /= totalPixels;
+    b /= totalPixels;
+    var bright = (r + g + b) / 3;
+    return {
+        r: r,
+        g: g,
+        b: b,
+        bright: bright
+    };
+}
+
 function makeDialog(type){
     document.getElementById("dialog").innerHTML = dialogs[type];
 }
+
+function updateCornerColors(){
+    var ctx = document.getElementById("canvas").getContext("2d");
+    for(var i = 0; i < corners.length; i++){
+        var color = interprolatePixels(ctx.getImageData(corners[i].x - 1, corners[i].y - 1, 3, 3).data);
+        cornerColors.push(color);
+    }
+}
+
+function checkCornerColors(){
+    var ctx = document.getElementById("canvas").getContext("2d");
+    for(var i = 0; i < corners.length; i++){
+        var difference = 0;
+        var cornerColorNow = interprolatePixels(ctx.getImageData(corners[i].x - 1, corners[i].y - 1, 3, 3).data);
+        var cornerColorCorrect = cornerColors[i];
+        difference += Math.abs(cornerColorCorrect.r - cornerColorNow.r)/3;
+        difference += Math.abs(cornerColorCorrect.g - cornerColorNow.g)/3;
+        difference += Math.abs(cornerColorCorrect.b - cornerColorNow.b)/3;
+        if(difference > cornerDifferenceThreshold){
+            //console.log(cornerColorNow);
+            //console.log("BAD CORNER #" + (i + 1) + "! OFF BY " + difference + "! ATTEMPTING CORRECTION!");
+        }
+    }
+}
+
+var totalFrames = 0;
 
 function render(){
     var v = document.getElementById("img");
     var ctx = document.getElementById("canvas").getContext("2d");
     ctx.drawImage(v,0,0,640,480);
+    if(totalFrames > 10){
+        if(cornerColors.length == 0){
+            updateCornerColors();
+        }
+        checkCornerColors();
+    }
     updateValues();
+    ctx.strokeStyle = "#00CC00";
+    if(shapePoints.length){
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        var firstPoint = shapePoints[0];
+        ctx.moveTo(firstPoint.x, firstPoint.y);
+        for(var i = 1; i < shapePoints.length; i++){
+            ctx.lineTo(shapePoints[i].x, shapePoints[i].y);
+        }
+        if(shapeEnd){
+            ctx.lineTo(firstPoint.x, firstPoint.y);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
+    }
     ctx.fillStyle = "blue";
     ctx.strokeStyle = "red";
     for(var i = 0; i < dots.length; i++){
         ctx.beginPath();
-        ctx.arc(dots[i].x,dots[i].y,3,0,Math.PI*2,true);
+        ctx.arc(dots[i].x,dots[i].y,2,0,Math.PI*2,true);
         ctx.fill();
         ctx.stroke();
     }
+    totalFrames++;
     requestAnimationFrame(render);
 }
 
+var shapePoints = [];
+var shapeEnd = false;
 var dots = [];
 var oldDots = [];
 function deleteField(number,noConfirm){
@@ -300,6 +483,8 @@ function deleteField(number,noConfirm){
                 }
             }
         }
+        dots = [];
+        shapePoints = [];
     }
 }
 
@@ -308,8 +493,7 @@ function clearDialog(){
 }
 
 function updateThreshold(){
-    var number = this.number;
-    displays[number].threshold = this.value;
+    displays[this.number].threshold = this.value;
 }
 
 var fieldNames = [
@@ -328,35 +512,71 @@ function buildInfo(field){
     if(!field.number){
         field.number = 0;
     }
-    document.getElementById("dialog").innerHTML = '<span>'+field.getElementsByClassName("field-name")[0].innerHTML+'</span><br>' + 
-    ((displays[field.number].type == 6) ? "" : '<ol id="cPoints"></ol>')+
-    (displays[field.number].type == 3 ? "" : 'Threshold <input type="range" id="threshold" min="1" max="255" value="'+displays[field.number].threshold+'"><br>')+
-    'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>'+
-    '<button id="delete">Delete</button>';
-    if(displays[field.number].type != 3){
-        document.getElementById("threshold").number = field.number;
-        document.getElementById("threshold").addEventListener("change",updateThreshold,false);
-    }
     var d = displays[field.number];
-    var select = document.getElementById("fieldName");
-    for(var i = 0; i < fieldNames.length; i++){
-        var el = document.createElement("option");
-        el.value = fieldNames[i].internal;
-        el.innerHTML = fieldNames[i].friendly;
-        if(el.value == d.fieldName){
-            el.selected = true;
+    document.getElementById("dialog").innerHTML = '<span class="field-name">'+field.getElementsByClassName("field-name")[0].innerHTML+'</span>' +
+    '<button id="setFieldCorners">Set Field Corners</button>' +
+    '<br>' + 
+    (d.type == 6 ? "" : '<ol id="cPoints"></ol>' +
+    (d.corners ? '<ol id="cornerPoints"></ol>' : "") +
+    (d.type == 3 ? "" : 'Threshold <input type="range" id="threshold" min="1" max="255" value="'+d.threshold+'"><br>') +
+    'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>') +
+    '<button id="delete">Delete</button>';
+    if(d.type != 6){
+        if(d.type != 3){
+            document.getElementById("threshold").number = field.number;
+            document.getElementById("threshold").addEventListener("change",updateThreshold,false);
         }
-        select.appendChild(el);
+        var select = document.getElementById("fieldName");
+        for(var i = 0; i < fieldNames.length; i++){
+            var el = document.createElement("option");
+            el.value = fieldNames[i].internal;
+            el.innerHTML = fieldNames[i].friendly;
+            if(el.value == d.fieldName){
+                el.selected = true;
+            }
+            select.appendChild(el);
+        }
+        select.addEventListener("change",function(){if(this.value != ""){d.fieldName = this.value}else{this.fieldName = false;}},false);
     }
-    select.addEventListener("change",function(){if(this.value != ""){d.fieldName = this.value}else{this.fieldName = false;}},false);
+    document.getElementById("setFieldCorners").addEventListener("click", function(){
+        if(this.active){
+            this.innerHTML = "Set Field Corners";
+            this.active = false;
+            document.getElementById("canvas").currentPoints = false;
+            document.getElementById("canvas").moveEvent = false;
+        }else{
+            this.innerHTML = "Done";
+            document.getElementById("canvas").currentPoints = d.corners;
+            this.active = true;
+            var conversionMatrix2 = mapQuadToSquare(pointArrayToMatrix(corners));
+            document.getElementById("canvas").moveEvent = function(){
+                var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(d.corners));
+                var newPoints = matrixToPointArray(perstrans(pointMatrices[li.display.type], conversionMatrix));
+                shapePoints = matrixToPointArray(perstrans(lineMatrices[li.display.type], conversionMatrix));
+                for(var j = 0; j < newPoints.length; j++){
+                    d.points[j].x = newPoints[j].x;
+                    d.points[j].y = newPoints[j].y;
+                }
+                d.matrixPoints = perstrans(pointArrayToMatrix(d.points), conversionMatrix2).elements;
+            }
+        }
+    }, false);
     document.getElementById("delete").addEventListener("click",function(){deleteField(this.number);rebuildFields();clearDialog();},false);
     document.getElementById("delete").number = field.number;
+    dots = [];
+    shapePoints = [];
+    if(lineMatrices[d.type]){
+        shapePoints = matrixToPointArray(perstrans(lineMatrices[d.type], mapSquareToQuad(pointArrayToMatrix(d.corners))));
+    }
     var points = document.getElementById("cPoints");
+    var cornerPoints = document.getElementById("cornerPoints");
     if(points){
         points.display = d;
-        dots = [];
         for(var i = 0; i < d.points.length; i++){
             var li = document.createElement("li");
+            li.number = i;
+            li.display = d;
+            li.className = "point";
             if(d.type == 3){
                 li.innerHTML = '<span class="name">'+displays[d.points[i]].name+'</span> <span class="value"></span>';
             }else{
@@ -374,24 +594,49 @@ function buildInfo(field){
                         dots = oldDots;
                     }
                 },false);
-                li.number = i;
-                li.display = d;
-                li.addEventListener("click",function(){
-                    lockPoints = true;
-                    document.getElementById("canvas").currentPoint = this.display.points[this.number];
-                    document.getElementById("canvas").nextEvent = function(){
-                        this.currentPoint = false;
-                        this.nextEvent = false;
-                        dots = oldDots;
-                        lockPoints = false;
-                        buildInfo(field);
-                    }
-                });
-                dots.push({x: li.x, y: li.y});
+                if(!cornerPoints){
+                    li.addEventListener("click",function(){
+                        var li = this;
+                        lockPoints = true;
+                        document.getElementById("canvas").currentPoint = this.display.points[this.number];
+                        dots = [document.getElementById("canvas").currentPoint];
+                        li.style.backgroundColor = "#00CC00";
+                        document.getElementById("canvas").nextEvent = function(){
+                            this.currentPoint = false;
+                            this.nextEvent = false;
+                            dots = oldDots;
+                            lockPoints = false;
+                            buildInfo(field);
+                        }
+                    });
+                }
+                dots.push(d.points[i]);
             }
-            li.className = "point";
-            li.number = i;
             points.appendChild(li);
+        }
+    }
+    if(cornerPoints){
+        cornerPoints.display = d;
+        for(var i = 0; i < d.corners.length; i++){
+            var li = document.createElement("li");
+            li.className = "corner";
+            li.number = i;
+            li.display = d;
+            li.innerHTML = '<span class="name">'+d.corners[i].x+", "+d.corners[i].y+'</span>';
+            li.x = d.corners[i].x;
+            li.y = d.corners[i].y;
+            li.addEventListener("mouseover",function(){
+                if(!lockPoints){
+                    oldDots = dots;
+                    dots = [{x: this.x, y: this.y}];
+                }
+            },false);
+            li.addEventListener("mouseout",function(){
+                if(!lockPoints){
+                    dots = oldDots;
+                }
+            },false);
+            cornerPoints.appendChild(li);
         }
     }
 }
@@ -420,13 +665,16 @@ function finishNewInput(d){
     var canvas = document.getElementById("canvas").nextEvent = false;
     if(d.type == 6){
         d.name = 'FIXED: "' + d.points[0] + '"';
-    }else if(d.type == 0){
-        d.name = "CORNERS";
-        corners = d.points;
-        localStorage.lastCorners = JSON.stringify(corners);
-        return;
     }else{
         d.name = prompt("Name the display.");
+    }
+    if(pointMatrices[d.type]){
+        // Matrix transforms to make the 7-segments easier
+        d.corners = d.points;
+        d.points = matrixToPointArray(perstrans(pointMatrices[d.type], mapSquareToQuad(pointArrayToMatrix(d.points))));
+    }
+    if(d.type != 3 && d.type != 6){
+        d.matrixPoints = perstrans(pointArrayToMatrix(d.points), mapQuadToSquare(pointArrayToMatrix(corners))).elements;
     }
     displays.push(d);
     buildLi(d);
@@ -483,11 +731,11 @@ function startInput(type, d){
                 }
                 break;
             case 7:
-                if(d.points.length == 7){
+                if(d.points.length == 4){
                     finishNewInput(d);
                     return;
                 }else{
-                    document.getElementById("pos").innerHTML = pos[d.points.length];
+                    document.getElementById("pos").innerHTML = cornerPos[d.points.length];
                 }
         }
         d.points.push(canvas.currentPoint = {});

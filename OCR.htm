@@ -4,7 +4,9 @@
         <title>HTML5 Scoreboard OCR Demo</title>
         <style>
             #divLeft{
-                display: inline-block;
+                float: left;
+            }
+            #divRight{
                 float: left;
             }
             #pos{
@@ -29,6 +31,12 @@
                 list-style-type: none;
                 -webkit-margin-before: 0px;
             }
+            #canvas{
+                float: left;
+            }
+            #interface{
+                float: left;
+            }
         </style>
         <script src="/socket.io/socket.io.js"></script>
         <script src="/scripts/sylvester.js"></script>
@@ -36,12 +44,11 @@
         <script src="/scripts/OCR.js"></script>
     </head>
     <body>
-        <div>
-            <canvas id="canvas" height="480" width="640"></canvas><br>
-            <video src="test.mp4" id="img" hidden="hidden" loop="true" preload="all" autoplay="true" muted="muted" volume="0"></video>
+        <video src="test.mp4" id="img" hidden="hidden" loop="true" preload="all" autoplay="true" muted="muted" volume="0"></video>
+        <canvas id="canvas" height="480" width="640"></canvas><br>
+        <div id="interface">
             <div id="divLeft">
                 <button id="add">Add Field</button><select id="type">
-                    <option value="0">Corners</option>
                     <option value="1">Single</option>
                     <option value="4">Home/Away</option>
                     <option value="2">2-Segment</option>
@@ -49,13 +56,13 @@
                     <option value="5">Counter</option>
                     <option value="6">String</option>
                     <option value="3">Composite</option>
-                </select><br>
+                </select><button id="setCorners">Set Corners</button><br>
                 <select id="slot"><option value="NEW">New...</option></option><optgroup id="files"></optgroup></select><button id="save">Save</button><button id="load">Load</button><br>
                 <ul id="fields">
                     
                 </ul>
             </div>
-            <div id="divLeft">
+            <div id="divRight">
                 <div id="dialog">
                 </div>
             </div>

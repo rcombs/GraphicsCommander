@@ -3,16 +3,16 @@
 /*
 Copyright (C) 2012 Rodger Combs.
 The program encoded in this text file (herein the PROGRAM) is provided by Rodger Combs (herein the AUTHOR) for use by any individual or company (herein the USER) in conjunction with NewTek LiveText (herein LIVETEXT) and/or its related products, including, but not limited to, the NewTek Tricaster 850 and NewTek Tricaster 850XD (herein RELATED PRODUCTS) under any of the three (3) conditions listed below:
-    1. The USER uses the PROGRAM solely for non-commercial and/or non-profit use, including, but not limited to, and at the sole discretion of the AUTHOR:
-        a. Schools
-        b. Churches
-        c. Charities
-        d. USERs who do not profit from use of the PROGRAM, LIVETEXT, or RELATED PRODUCTS
-    2. Both of the following conditions are fulfilled:
-        a. The USER has received express permission from the AUTHOR to use the PROGRAM, including, but not limited to, permission granted as a result of a purchase from the AUTHOR
-        b. Any conditions specified by the AUTHOR for use of the PROGRAM by the USER are followed
-    3. The USER intends to profit from use of the PROGRAM, LIVETEXT, or RELATED PRODUCTS, but will not profit from the current use of the PROGRAM, including, but not limited to, a USER who wishes to test the functionality of the PROGRAM or its usefulness in their workflow.
-     
+	1. The USER uses the PROGRAM solely for non-commercial and/or non-profit use, including, but not limited to, and at the sole discretion of the AUTHOR:
+		a. Schools
+		b. Churches
+		c. Charities
+		d. USERs who do not profit from use of the PROGRAM, LIVETEXT, or RELATED PRODUCTS
+	2. Both of the following conditions are fulfilled:
+		a. The USER has received express permission from the AUTHOR to use the PROGRAM, including, but not limited to, permission granted as a result of a purchase from the AUTHOR
+		b. Any conditions specified by the AUTHOR for use of the PROGRAM by the USER are followed
+	3. The USER intends to profit from use of the PROGRAM, LIVETEXT, or RELATED PRODUCTS, but will not profit from the current use of the PROGRAM, including, but not limited to, a USER who wishes to test the functionality of the PROGRAM or its usefulness in their workflow.
+	 
 Any use of the PROGRAM that does not fulfill one of these conditions is prohibited.
 
 If a USER is licensed for use of the PROGRAM under the above license, then that USER is licensed to modify any portion of the PROGRAM with the exception of this license statement. Such a modified version of the PROGRAM may NOT be redistributed to any other USER except when expressly permitted by the AUTHOR. If the USER is unable to make such a modification, then the USER may submit a feature request or bug report at the GITHUB ISSUES PAGE at https://github.com/11rcombs/LiveText-Control/issues
@@ -31,6 +31,7 @@ var http = require("http");
 var dgram = require("dgram");
 var util = require("util");
 var mime = require("mime");
+var URL = require("url");
 var rawFlags = {};
 var quartzFlags = {
 	keeps: {
@@ -131,14 +132,14 @@ function extend() {
 
 		// Recurse if we're merging object literal values or arrays
 		if (deep && copy && (isPlainObject(copy) || Array.isArray(copy))) {
-		  var clone = src && (isPlainObject(src) || Array.isArray(src)) ? src : Array.isArray(copy) ? [] : {};
+			var clone = src && (isPlainObject(src) || Array.isArray(src)) ? src : Array.isArray(copy) ? [] : {};
 
-		  // Never move original objects, clone them
-		  target[name] = extend(deep, clone, copy);
+			// Never move original objects, clone them
+			target[name] = extend(deep, clone, copy);
 
 		// Don't bring in undefined values
 		} else if (typeof copy !== 'undefined')
-		  target[name] = copy;
+			target[name] = copy;
 	  }
 	}
   }
@@ -148,7 +149,7 @@ function extend() {
 };
 
 /*
-    END MIT Licensed Section
+	END MIT Licensed Section
 */
 
 function makeString(hash){
@@ -249,14 +250,14 @@ var added = {
 	},
 };
 function zeroPad(num, numZeros) {
-        var n = Math.abs(num);
-        var zeros = Math.max(0, numZeros - Math.floor(n).toString().length );
-        var zeroString = Math.pow(10,zeros).toString().substr(1);
-        if( num < 0 ) {
-                zeroString = '-' + zeroString;
-        }
+		var n = Math.abs(num);
+		var zeros = Math.max(0, numZeros - Math.floor(n).toString().length );
+		var zeroString = Math.pow(10,zeros).toString().substr(1);
+		if( num < 0 ) {
+				zeroString = '-' + zeroString;
+		}
 
-        return zeroString+n;
+		return zeroString+n;
 }
 var fixes = {
 	Down: function(down){
@@ -604,13 +605,14 @@ var hserver = http.createServer(function(req,res){
 			res.end("OK");
 		});
 	}else{
-		switch(req.url.toLowerCase()){
+		var url = URL.parse(req.url);
+		switch(url.pathname.toLowerCase()){
 			case "/favicon.ico":
 			case "/favicon.png":
-                stream("favicon.png", req, res, "image/png");
-            break;
+				stream("favicon.png", req, res, "image/png");
+			break;
 			case "/shortcuts.png":
-                stream("shortcuts.png", req, res, "image/png");
+				stream("shortcuts.png", req, res, "image/png");
 			break;
 		case "/stats.json":
 			res.setHeader("Content-Type","application/json");
@@ -646,10 +648,10 @@ var hserver = http.createServer(function(req,res){
 			stream("Baseball.htm", req, res, "text/html");
 			break;
 		default:
-            if(fs.existsSync("."+req.url)){
-                stream("."+req.url, req, res, mime.lookup(req.url));
-                               break;
-            }
+			if(url.pathname !== "/" && fs.existsSync("."+url.pathname)){
+				stream("."+url.pathname, req, res, mime.lookup(url.pathname));
+							   break;
+			}
 			stream("Manual.htm", req, res, "text/html");
 			break;
 		}
