@@ -23,15 +23,129 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 "use strict";
 var VERSION = 1.0;
-var net = require("net");
-var path = require("path");
-var fs = require("fs");
-var socketio = require("socket.io");
-var http = require("http");
-var dgram = require("dgram");
-var util = require("util");
-var mime = require("mime");
-var URL = require("url");
+var net = require("net"),
+	path = require("path"),
+	fs = require("fs"),
+	socketio = require("socket.io"),
+	http = require("http"),
+	dgram = require("dgram"),
+	util = require("util"),
+	mime = require("mime"),
+	URL = require("url"),
+	Chyron = require("chyron");
+	
+var options = require("nomnom").opts({
+	infile: {
+		abbr: "i",
+		full: "in-file",
+		list: true,
+		help: "Scoreboard file to poll automatically",
+		callback: function(arg){
+			if(!fs.existsSync(arg)){
+				return "File "+arg+" does not exist!";
+			}else{
+				try{
+					fs.watchFile(arg, {persistent: true, interval: 60}, function(curr,prev){
+						if(curr.mtime.getTime() != prev.mtime.getTime()){
+							parseScoreboard(arg);
+							writeOutput();
+							sendUpdates();
+						}
+					});
+				}catch(e){
+					setInterval(function(){
+						parseScoreboard(arg);
+						writeOutput();
+						sendUpdates();
+					},60);
+				}
+				parseScoreboard(arg);
+			}
+		}
+	},
+	startHostedNetwork: {
+		abbr: "s",
+		full: "start-hosted-network",
+		flag: true,
+		help: "Begin acting as a wireless access point on start",
+		callback: function(){
+			var proc = require('child_process').spawn("netsh", ["wlan", "start", "hostednetwork"]);
+			proc.on("exit", function(code){
+				if(code == 0){
+					console.log("Successfully started hosted network");
+				}else{
+					console.error("Hosted network not started; threw error code "+code);
+				}
+			});
+		}
+	},
+	preload: {
+		abbr: "l",
+		full: "preload-file",
+		list: true,
+		help: "Scoreboard file to parse once on start",
+		callback: function(arg){
+			if(!fs.existsSync(arg)){
+				return "File "+arg+" does not exist!";
+			}else{
+				parseScoreboard(arg);
+				writeOutput();
+			}
+		}
+	},
+	outfile: {
+		abbr: "o",
+		full: "out-file",
+		help: "File to write for Livetext",
+		default: "livetext.txt"
+	},
+	port: {
+		abbr: "p",
+		full: "port",
+		help: "Port to listen on for Socket server",
+		default: 8989
+	},
+	httpport: {
+		abbr: "h",
+		full: "http-port",
+		help: "Port to listen on for HTTP server",
+		default: 8990
+	},
+	configFile: {
+		abbr: "c",
+		full: "config-file",
+		help: "JSON file to load configuration from"
+	}
+}).parseArgs();
+
+var config = {
+	writeOutput: true,
+	chyronHost: false,
+	chyronPort: 23,
+	chyronTab: {
+		message: 1,
+		descriptor: 1,
+		list: ["HScore", "VScore", "GameClk", "DownAndToGo", "BallOn", "Period"]
+	}
+};
+
+if(options.configFile){
+	var configIn = JSON.parse(fs.readFileSync(options.configFile));
+	for(var i in configIn){
+		config[i] = configIn[i];
+	}
+}
+
+var chyron;
+if(config.chyronHost){
+	chyron = new Chyron(config.chyronHost, config.chyronPort, function(){
+		console.log("Chyron connected");
+	});
+	chyron.on("error", function(err){
+		console.log("CHYRON ERROR: " + err);
+	});
+}
+
 var rawFlags = {};
 var quartzFlags = {
 	keeps: {
@@ -47,18 +161,6 @@ setInterval(function(){
 	}
 }, 250);
 
-/**
- * The following method is adopted from jquery's extend method. Under the terms of MIT License, listed below:
- Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * http://code.jquery.com/jquery-1.4.2.js
- *
- * Modified by mscdex to use Array.isArray instead of the custom isArray method
- */
 function runCountdown(){
 	var write = false;
 	if(rawFlags.countdown > 0 && rawFlags.countdownRunning == true){
@@ -77,7 +179,9 @@ function runCountdown(){
 		writeOutput();
 	}
 }
+
 setInterval(runCountdown, 1000);
+
 function extend() {
   // copy reference to target object
   var target = arguments[0] || {}, i = 1, length = arguments.length, deep = false, options, name, src, copy;
@@ -148,10 +252,6 @@ function extend() {
   return target;
 };
 
-/*
-	END MIT Licensed Section
-*/
-
 function makeString(hash){
 	var str = "";
 	for(var i in hash){
@@ -162,70 +262,83 @@ function makeString(hash){
 }
 function stream(file, req, res, type){
 	fs.stat(file, function(err, stat){
-	if(err){
-		throw err;
-	}
-	if (!stat.isFile()){
-		res.end();
-	}
+		if(err){
+			throw err;
+		}
+		if (!stat.isFile()){
+			res.end();
+		}
+		
+		var start = 0;
+		var end = 0;
+		var range = req.headers.Range;
+		if (range != null) {
+		start = parseInt(range.slice(range.indexOf('bytes=') + 6, range.indexOf('-')));
+		end = parseInt(range.slice(range.indexOf('-') + 1, range.length));
+		}
+		if (isNaN(start)){
+			start = 0;
+		}
+		if (isNaN(end) || end == 0) end = stat.size;
+		
+		if (start > end){
+			res.end();
+		}
+		
+		var date = new Date();
 	
-	var start = 0;
-	var end = 0;
-	var range = req.headers.Range;
-	if (range != null) {
-	start = parseInt(range.slice(range.indexOf('bytes=')+6,
-	  range.indexOf('-')));
-	end = parseInt(range.slice(range.indexOf('-')+1,
-	  range.length));
-	}
-	if (isNaN(start)){
-		start = 0;
-	}
-	if (isNaN(end) || end == 0) end = stat.size;
-	
-	if (start > end){
-		res.end();
-	}
-	
-	var date = new Date();
-
-	if(range == null){
-		res.writeHead(200, {
-			"Date": date.toUTCString(),
-			"Connection": "close",
-			"Content-Type": type,
-			"Content-Length": stat.size
+		if(range == null){
+			res.writeHead(200, {
+				"Date": date.toUTCString(),
+				"Connection": "close",
+				"Content-Type": type,
+				"Content-Length": stat.size
+			});
+		}else{
+		
+		res.writeHead(206, { // NOTE: a partial http response
+			'Date': date.toUTCString(),
+			'Connection': 'close',
+			// 'Cache-Control':'private',
+			'Content-Type': type,
+			'Content-Length': end - start,
+			'Content-Range': 'bytes '+start+'-'+end+'/'+stat.size,
+			'Accept-Ranges':'bytes',
+			// 'Server':'CustomStreamer/0.0.1',
+			'Transfer-Encoding':'chunked'
 		});
-	}else{
 	
-	res.writeHead(206, { // NOTE: a partial http response
-		'Date': date.toUTCString(),
-		'Connection': 'close',
-		// 'Cache-Control':'private',
-		'Content-Type': type,
-		'Content-Length': end - start,
-		'Content-Range': 'bytes '+start+'-'+end+'/'+stat.size,
-		'Accept-Ranges':'bytes',
-		// 'Server':'CustomStreamer/0.0.1',
-		'Transfer-Encoding':'chunked'
-	});
-
-	}
-	
-	var stream = fs.createReadStream(file, {
-		flags: 'r', start: start, end: end
-	});
-	stream.pipe(res);
+		}
+		
+		var stream = fs.createReadStream(file, {
+			flags: 'r', start: start, end: end
+		});
+		stream.pipe(res);
 	});
 }
+
+function sendChyron(){
+	var outArr = [];
+	for(var i = 0; i < config.chyronTab.list; i++){
+		outArr.push(writeFlags[config.chyronTab.list[i] || ""]);
+	}
+	chyron.writeTab(config.chyronTab.message, config.chyronTab.descriptor, outArr);
+}
+
 function writeOutput(){
 	runFixes();
-	var string = makeString(writeFlags);
-	try{
-		 fs.writeFileSync(options.outfile,string);
-	}catch(e){
+	if(config.writeText){
+		var string = makeString(writeFlags);
+		try{
+			 fs.writeFileSync(options.outfile,string);
+		}catch(e){
+		}
+	}
+	if(chyron){
+		sendChyron();
 	}
 }
+
 var added = {
 	DownAndTogo: function(){
 		if(writeFlags.Down && writeFlags.ToGo){
@@ -351,85 +464,9 @@ function parseScoreboard(infile){
 	var string = fs.readFileSync(infile).toString();
 	parseData(string, ignores);
 }
-var options = require("nomnom").opts({
-	infile: {
-		abbr: "i",
-		full: "in-file",
-		list: true,
-		help: "Scoreboard file to poll automatically",
-		callback: function(arg){
-			if(!fs.existsSync(arg)){
-				return "File "+arg+" does not exist!";
-			}else{
-			try{
-					fs.watchFile(arg, {persistent: true, interval: 60}, function(curr,prev){
-							if(curr.mtime.getTime() != prev.mtime.getTime()){
-								parseScoreboard(arg);
-							 	writeOutput();
-								sendUpdates();
-							}
-					});
-			}catch(e){
-				setInterval(function(){
-					parseScoreboard(arg);
-					writeOutput();
-					sendUpdates();
-				},60);
-			}
-				parseScoreboard(arg);
-			}
-		}
-	},
-	startHostedNetwork: {
-		abbr: "s",
-		full: "start-hosted-network",
-		flag: true,
-		help: "Begin acting as a wireless access point on start",
-		callback: function(){
-			var proc = require('child_process').spawn("netsh", ["wlan", "start", "hostednetwork"]);
-			proc.on("exit", function(code){
-				if(code == 0){
-					console.log("Successfully started hosted network");
-				}else{
-					console.error("Hosted network not started; threw error code "+code);
-				}
-			});
-		}
-	},
-	preload: {
-		abbr: "l",
-		full: "preload-file",
-		list: true,
-		help: "Scoreboard file to parse once on start",
-		callback: function(arg){
-			if(!fs.existsSync(arg)){
-				return "File "+arg+" does not exist!";
-			}else{
-				parseScoreboard(arg);
-				writeOutput();
-			}
-		}
-	},
-	outfile: {
-		abbr: "o",
-		full: "out-file",
-		help: "File to write for Livetext",
-		default: "livetext.txt"
-	},
-	port: {
-		abbr: "p",
-		full: "port",
-		help: "Port to listen on for Socket server",
-		default: 8989
-	},
-	httpport: {
-		abbr: "h",
-		full: "http-port",
-		help: "Port to listen on for HTTP server",
-		default: 8990
-	}
-}).parseArgs();
+
 writeOutput();
+
 var parseAdds = {
 	homePossPath: function(){
 		switch(rawFlags.Poss){
@@ -553,6 +590,7 @@ var parseAdds = {
 		}
 	}
 }
+
 function parseData(x,ignores){
 	var arr = x.replace(/\r/g,"").split("\n");
 	for(var i = 0; i < arr.length; i++){
@@ -569,26 +607,30 @@ function parseData(x,ignores){
 		rawFlags[i] = parseAdds[i]();
 	}
 }
+
 var server = net.createServer(function(c){
 	console.log("Socket connection from " + c.remoteAddress);
 	c.on("data",function(data){
-	if(data){
-			console.log("Received data from socket: " + data.toString());
-			parseData(data.toString());
-			writeOutput();
-			sendUpdates();
-	}
+		if(data){
+				console.log("Received data from socket: " + data.toString());
+				parseData(data.toString());
+				writeOutput();
+				sendUpdates();
+		}
 	});
 });
+
 function sendUpdate(res){
 	res.write("data: "+JSON.stringify(rawFlags)+"\n\n");
 }
+
 function sendUpdates(){
 	for(var i = 0; i < ESRes.length; i++){
 		sendUpdate(ESRes[i]);
 	}
 	io.sockets.emit("state",rawFlags);
 }
+
 var ESRes = [];
 server.listen(options.port, "0.0.0.0");
 console.log("Socket listening on port "+options.port);

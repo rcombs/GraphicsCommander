@@ -2,4 +2,6 @@ NewTek Info
 .DS_Store
 livetext.txt
 infile.txt
+fbdata.txt
+clkdata.txt
 node_modules
