@@ -10,8 +10,8 @@ socket.on("state",function(s){
     if('HScore' in s){document.getElementById("homeScore").value = s.HScore;}
     if('VScore' in s){document.getElementById("awayScore").value = s.VScore;}
     if('Period' in s){document.getElementById("period").value = s.Period;}
-    if('flag' in s){document.getElementById("flag").checked = s.flag == "on";}
-    if('timeout' in s){document.getElementById("timeout").checked = s.timeout == "on";}
+    if('flag' in s){document.getElementById("flag").checked = s.flag == true;}
+    if('timeout' in s){document.getElementById("timeout").checked = s.timeout == true;}
     if('periodPrefix' in s){document.getElementById("periodprefix").value = s.periodPrefix;}
     if('Poss' in s){document.getElementById("poss_"+s.Poss).checked = true;}
     if('Down' in s){document.getElementById("down").value = s.Down;}
@@ -28,10 +28,10 @@ function send(data){
     socket.emit("update", data);
 }
 function timeout(){
-	send({timeout: (this.checked ? "on" : "off")});
+	send({timeout: this.checked});
 }
 function flag (){
-	send({flag: (this.checked ? "on" : "off")});
+	send({flag: this.checked});
 }
 function goal (){
 	send({goalOn: this.checked});

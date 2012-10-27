@@ -1,0 +1,12 @@
+{
+	"presets": {},
+	"modules": {
+		"http": {
+			"port": 8990
+		},
+		"hostedNetwork": false,
+		"outFile": {
+			"path": "test.txt"
+		}
+	}
+}
