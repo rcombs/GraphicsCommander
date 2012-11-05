@@ -3,7 +3,8 @@ var http = require("http"),
 	mime = require("mime"),
 	URL = require("url"),
 	events = require("events"),
-	fs = require("fs");
+	fs = require("fs"),
+	path = require("path");
 	
 var exports = module.exports = function(config){
 	var self = this;
@@ -49,10 +50,21 @@ var exports = module.exports = function(config){
 				stream(resourceDir + "/Baseball.htm", req, res, "text/html");
 				break;
 			default:
-				if(url.pathname !== "/" && fs.existsSync("resources" + url.pathname)){
+				if(fs.existsSync("resources" + url.pathname)){
 					stream(resourceDir + url.pathname, req, res, mime.lookup(url.pathname));
 				}else{
-					stream(resourceDir + "/Manual.htm", req, res, "text/html");
+					var sent = false;
+					for(var i = 0; i < self.modules.length; i++){
+						var mod = self.modules[i];
+						if(mod.paths && mod.paths[url.pathname]){
+							mod.paths[url.pathname](req, res);
+							sent = true;
+							break;
+						}
+					}
+					if(!sent){
+						stream(resourceDir + "/Manual.htm", req, res, "text/html");
+					}
 				}
 				break;
 			}
@@ -80,6 +92,23 @@ var exports = module.exports = function(config){
 			self.emit("flags", data);
 		});
 	});
+	var modules = this.modules = [];
+	if(config.modules){
+		for(var i in config.modules){
+			if(!config.modules[i]){
+				continue;
+			}
+			var mod = require(path.join(__dirname, "modules", i));
+			var modInfo = {
+				server: server,
+				io: io,
+				parent: self,
+				config: config.modules[i]
+			}
+			var instance = new mod(modInfo);
+			modules.push(instance);
+		}
+	}
 }
 
 exports.prototype = new events.EventEmitter();
@@ -91,27 +120,29 @@ exports.prototype.writeFlags = function(flags){
 
 exports.type = "io";
 	
-function stream(file, req, res, type){
+var stream = exports.prototype.stream = function(file, req, res, type){
 	fs.stat(file, function(err, stat){
 		if(err){
 			throw err;
 		}
-		if (!stat.isFile()){
+		if(!stat.isFile()){
 			res.end();
 		}
 		
 		var start = 0;
 		var end = 0;
 		var range = req.headers.Range;
-		if (range != null) {
-		start = parseInt(range.slice(range.indexOf('bytes=') + 6, range.indexOf('-')));
-		end = parseInt(range.slice(range.indexOf('-') + 1, range.length));
+		if(range != null){
+			start = parseInt(range.slice(range.indexOf('bytes=') + 6, range.indexOf('-')));
+			end = parseInt(range.slice(range.indexOf('-') + 1, range.length));
 		}
+		
 		if (isNaN(start)){
 			start = 0;
 		}
-		if (isNaN(end) || end == 0) end = stat.size;
-		
+		if (isNaN(end) || end == 0){
+			end = stat.size;
+		}
 		if (start > end){
 			res.end();
 		}
@@ -125,20 +156,18 @@ function stream(file, req, res, type){
 				"Content-Type": type,
 				"Content-Length": stat.size
 			});
-		}else{
-		
-		res.writeHead(206, { // NOTE: a partial http response
-			'Date': date.toUTCString(),
-			'Connection': 'close',
-			// 'Cache-Control':'private',
-			'Content-Type': type,
-			'Content-Length': end - start,
-			'Content-Range': 'bytes '+start+'-'+end+'/'+stat.size,
-			'Accept-Ranges':'bytes',
-			// 'Server':'CustomStreamer/0.0.1',
-			'Transfer-Encoding':'chunked'
-		});
-	
+		}else{		
+			res.writeHead(206, { // NOTE: a partial http response
+				'Date': date.toUTCString(),
+				'Connection': 'close',
+				// 'Cache-Control':'private',
+				'Content-Type': type,
+				'Content-Length': end - start,
+				'Content-Range': 'bytes '+start+'-'+end+'/'+stat.size,
+				'Accept-Ranges':'bytes',
+				// 'Server':'CustomStreamer/0.0.1',
+				'Transfer-Encoding':'chunked'
+			});
 		}
 		
 		var stream = fs.createReadStream(file, {

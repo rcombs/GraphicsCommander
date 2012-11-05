@@ -29,8 +29,12 @@ var path = require("path"),
 var configFile = process.argv[2];
 
 if(!configFile){
-	console.error("Specify a config file!");
-	process.exit(1);
+	if(fs.existsSync("config.json")){
+		configFile = "config.json";
+	}else{
+		console.error("Specify a config file!");
+		process.exit(1);
+	}
 }
 
 /*
