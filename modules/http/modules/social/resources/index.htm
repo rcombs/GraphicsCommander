@@ -74,9 +74,14 @@
 			});
 			socket.on("showingTweets", function(tweets){
 				var table = document.getElementById("showingTweets");
+				var trs = table.getElementsByClassName("tweet");
+				for(var i = 0; i < trs.length; i++){
+					table.removeChild(trs[i]);
+				}
 				for(var i in tweets){
 					var tweet = tweets[i];
 					var tr = document.createElement("tr");
+					tr.classList.add("tweet");
 					tr.tweet = tweet;
 					var removeTd = buildRemove();
 					tr.appendChild(removeTd);

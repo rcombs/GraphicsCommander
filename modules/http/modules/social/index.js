@@ -54,6 +54,7 @@ exports.prototype.rebuildTwitterText = function(){
 		var tweetText = "@" + tweet.user.screen_name + ": " + tweet.text;
 		texts.push(tweetText);
 	}
-	this.twitterText = texts.join(this.config.separator | " | ");
-	this.parent.emit("flags", {twitterText: this.twitterText});
+	this.twitterText = texts.join(" | ");
+	this.parent.emit("flags", {twitterText: this.twitterText, "LiveText_Play": 0});
+	this.parent.emit("flags", {"LiveText_Play": 1});
 }
