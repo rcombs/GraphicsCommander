@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Tweet Approval</title>
+		<style>
+			.yes-button{
+				content: "Yes";
+				background-color: green;
+			}
+			.no-button{
+				content: "No";
+				background-color: red;
+			}
+			.remove-button{
+				content: "Remove";
+				background-color: red;
+			}
+			table{
+				border: 1px solid grey;
+			}
+			td{
+				border: 1px solid grey;
+				padding: 2px;
+			}
+		</style>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			function buildYes(){
+				var td = document.createElement("td");
+				td.classList.add("yes-button");
+				td.addEventListener("click", function(){
+					approveTweet(this.parentNode.tweet);
+					this.parentNode.parentNode.removeChild(this.parentNode);
+				}, false);
+				return td;
+			}
+			function buildNo(){
+				var td = document.createElement("td");
+				td.classList.add("no-button");
+				td.addEventListener("click", function(){
+					this.parentNode.parentNode.removeChild(this.parentNode);
+				}, false);
+				return td;
+			}
+			function buildRemove(){
+				var td = document.createElement("td");
+				td.classList.add("remove-button");
+				td.addEventListener("click", function(){
+					removeTweet(this.parentNode.tweet);
+					this.parentNode.parentNode.removeChild(this.parentNode);
+				}, false);
+				return td;
+			}
+			function buildPendingTweet(tweet){
+				var table = document.getElementById("pendingTweets");
+				var tr = document.createElement("tr");
+				tr.tweet = tweet;
+				var yesTd = buildYes();
+				tr.appendChild(yesTd);
+				var noTd = buildNo();
+				tr.appendChild(noTd);
+				var tweetTd = document.createElement("td");
+				tweetTd.innerHTML = tweet.text;
+				tr.appendChild(tweetTd);
+				var userTd = document.createElement("td");
+				userTd.innerHTML = tweet.user.screen_name + " (" + tweet.user.name + ")";
+				tr.appendChild(userTd);
+				table.appendChild(tr);
+			}
+			var socket = io.connect();
+			socket.emit("joinTwitter");
+			socket.on("newTweet", function(tweet){
+				buildPendingTweet(tweet);
+			});
+			socket.on("showingTweets", function(tweets){
+				var table = document.getElementById("showingTweets");
+				for(var i in tweets){
+					var tweet = tweets[i];
+					var tr = document.createElement("tr");
+					tr.tweet = tweet;
+					var removeTd = buildRemove();
+					tr.appendChild(removeTd);
+					var tweetTd = document.createElement("td");
+					tweetTd.innerHTML = tweet.text;
+					tr.appendChild(tweetTd);
+					var userTd = document.createElement("td");
+					userTd.innerHTML = tweet.user.screen_name + " (" + tweet.user.name + ")";
+					tr.appendChild(userTd);
+					table.appendChild(tr);
+				}
+			});
+			function approveTweet(tweet){
+				socket.emit("approveTweet", tweet);
+			}
+			function removeTweet(tweet){
+				socket.emit("removeTweet", tweet);
+			}
+		</script>
+	</head>
+	<body>
+		<h1>Tweets for Approval</h1>
+		<table id="pendingTweets">
+			<tr><th>Yes</th><th>No</th><th>Text</th><th>User</th></tr>
+		</table>
+		<h1>Tweets Showing</h1>
+		<table id="showingTweets">
+			<tr><th>Remove</th><th>Text</th><th>User</th></tr>
+		</table>
+	</body>
+</html>
