@@ -100,6 +100,9 @@
 			function removeTweet(tweet){
 				socket.emit("removeTweet", tweet);
 			}
+			function submitExtra(){
+				socket.emit("setExtra", document.getElementById("extra").value);
+			}
 		</script>
 	</head>
 	<body>
@@ -111,5 +114,7 @@
 		<table id="showingTweets">
 			<tr><th>Remove</th><th>Text</th><th>User</th></tr>
 		</table>
+		<textarea id="extra"></textarea>
+		<button id="submitExtra" onclick="submitExtra();">Submit</button>
 	</body>
 </html>

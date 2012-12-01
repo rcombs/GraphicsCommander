@@ -10,7 +10,6 @@ var exports = module.exports = function(info){
 	var twit = new twitter(oauth);
 	
 	var currentTweets = this.currentTweets = {};
-	var twitterText = this.twitterText = "";
 	
 	io.sockets.on("connection", function(socket){
 		socket.on("joinTwitter", function(){
@@ -26,6 +25,10 @@ var exports = module.exports = function(info){
 			delete currentTweets[tweet.id];
 			self.rebuildTwitterText();
 			io.sockets.in('twitter').emit('showingTweets', currentTweets);
+		});
+		socket.on("setExtra", function(text){
+			self.extraText = text;
+			self.rebuildTwitterText();
 		});
 	});
 	
@@ -47,14 +50,21 @@ var exports = module.exports = function(info){
 
 exports.prototype.rebuildTwitterText = function(){
 	var tweets = this.currentTweets;
-	var twitterText = this.twitterText = "";
 	var texts = []
 	for(var i in tweets){
 		var tweet = tweets[i];
 		var tweetText = "@" + tweet.user.screen_name + ": " + tweet.text;
 		texts.push(tweetText);
 	}
-	this.twitterText = texts.join(" | ");
-	this.parent.emit("flags", {twitterText: this.twitterText, "LiveText_Play": 0});
+	if(this.extraText){
+		texts.push(this.extraText);
+	}
+	var twitterText = texts.join(" | ");
+	var twitterTextObj = {};
+	for(var i = 0; i < 6; i++){
+		twitterTextObj["twitterText" + i] = twitterText.substr(i * 150, (i + 1) * 150) + " ";
+	}
+	twitterTextObj.LiveText_Play = 0;
+	this.parent.emit("flags", twitterTextObj);
 	this.parent.emit("flags", {"LiveText_Play": 1});
 }

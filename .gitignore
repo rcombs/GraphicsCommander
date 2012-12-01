@@ -5,5 +5,7 @@ infile.txt
 fbdata.txt
 clkdata.txt
 node_modules
-config.json
+*.json
+*.bat
+thumbs.db
 test.txt

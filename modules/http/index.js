@@ -50,7 +50,7 @@ var exports = module.exports = function(config){
 				stream(resourceDir + "/Baseball.htm", req, res, "text/html");
 				break;
 			default:
-				if(fs.existsSync("resources" + url.pathname)){
+				if(fs.existsSync(resourceDir + url.pathname)){
 					stream(resourceDir + url.pathname, req, res, mime.lookup(url.pathname));
 				}else{
 					var sent = false;

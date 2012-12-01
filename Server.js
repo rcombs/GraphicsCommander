@@ -87,7 +87,7 @@ function runEdits(inFlags){
 
 function sendOuts(){
 	var finalFlags = runEdits(flags);
-	var outModules = modules.in.concat(modules.out);
+	var outModules = modules.io.concat(modules.out);
 	for(var i = 0; i < outModules.length; i++){
 		outModules[i].writeFlags(finalFlags);
 	}
