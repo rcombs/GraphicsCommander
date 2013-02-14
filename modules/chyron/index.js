@@ -8,7 +8,15 @@ var Chyron = require("chyron"),
 var exports = module.exports = function(config){
 	var self = this;
 	this.config = config;
-	var chyron = this.chyron = new Chyron(config.host, config.port, function(){
+	var arg1, arg2;
+	if(config.host){
+		arg1 = config.host;
+		arg2 = config.port;
+	}else{
+		arg1 = config.sp;
+		arg2 = config.spOptions;
+	}
+	var chyron = this.chyron = new Chyron(arg1, arg2, function(){
 		console.log("Chyron connected");
 	});
 	chyron.on("error", function(err){

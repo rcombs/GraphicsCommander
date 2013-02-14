@@ -14,16 +14,24 @@ exports.type = "out";
 
 exports.prototype = new events.EventEmitter();
 
-function makeString(hash){
-	var str = "";
+function escapeXML(str){
+	return str.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;');
+}
+
+function makeString(hash, type){
+	var xml = (type === "xml");
+	var str = xml ? "<Info>" : "";
 	for(var i in hash){
 		var j = hash[i];
-		str += i + " = " + j + "\n";
+		str += xml ? ("<" + i + ">" + escapeXML(j) + "</" + i + ">") : (i + " = " + j + "\n");
 	}
-	return str;
+	return xml ? (str + "</Info>") : str;
 }
 
 exports.prototype.writeFlags = function(flags){
-	console.log(makeString(flags))
+	console.log(makeString(flags, this.config.type))
 	fs.writeFile(this.config.path, makeString(flags));
 }
