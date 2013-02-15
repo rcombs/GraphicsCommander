@@ -4,72 +4,44 @@
 
 var events = require("events");
 
-function buildFlags(countdowns){
-	var flags = {};
-	for(var i = 0; i < countdowns.length; i++){
-		if(countdowns[i] == -1){
-			flags["countdown" + i] = "";
-		}else{
-			flags["countdown" + i]
-		}
+function zeroPad(number, digits){
+	var str = number.toString(10);
+	while(str.length < digits){
+		str = "0" + str;
 	}
+	return str;
+}
+
+function formatTime(time){
+	var totalSeconds = time / 1000;
+	var seconds = totalSeconds % 60;
+	var totalMinutes = totalSeconds / 60 | 0;
+	var minutes = totalMinutes % 60;
+	var hours = totalMinutes / 60 | 0;
+	return (hours ? hours + ":") + zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
 }
 
 var exports = module.exports = function(config){
 	var self = this;
-	var flashOn = this.flashOn = false;
-	this.config = config;
-	var countdowns = this.countdowns = [];
-	var countups = this.countups = [];
-
-	setInterval(function(){
-		var useFlash = false;
-		for(var i = 0; i < config.flashFlags.length; i++){
-			if(global.flags[flashFlags[i]]){
-				useFlash = true;
-			}
-		}
-		if(useFlash){
-			self.flashOn = !self.flashOn;
-			self.emit("flags", {flashOn: self.flashOn});
-		}
-	}, config.flashTime);
+	this.counters = (config && config.counters) || {};
 	
 	setInterval(function(){
 		var send = false;
-		for(var i = 0; i < countdowns.length; i++){
-			
+		var flags = {};
+		for(var i in self.config.counters){
+			var cd = self.config.counters[i];
+			if(cd < 0){
+				// NEGATIVE = COUNTUP
+				flags[i] = formatTime(Math.max((new Date()).getTime() - cd, 0));
+			}else{
+				// POSITIVE = COUNTDOWN
+				flags[i] = formatTime(Math.max(cd - (new Date()).getTime(), 0));
+			}
 		}
-		if(send){
-			self.emit("flags", buildFlags(countdowns));
-		}
+		self.emit("flags", flags);
 	}, 1000);
 };
 
 exports.type = "in";
 
 exports.prototype = new events.EventEmitter();
-
-exports.prototype.setCountdown = function(number, seconds){
-	this.countdowns[number] = seconds;
-	this.emit("flags", buildFlags(this.countdowns));
-};
-
-function runCountdown(){
-	var write = false;
-	if(rawFlags.countdown > 0 && rawFlags.countdownRunning == true){
-		rawFlags.countdown = Math.max(rawFlags.countdown - 1000, 0);
-		write = true;
-	}else{
-		rawFlags.countdownRunning = false;
-	}
-	if(rawFlags.countdown2 > 0 && rawFlags.countdown2Running == true){
-		rawFlags.countdown2 = Math.max(rawFlags.countdown2 - 1000, 0);
-		write = true;
-	}else{
-		rawFlags.countdown2Running = false;
-	}
-	if(write){
-		writeOutput();
-	}
-}
