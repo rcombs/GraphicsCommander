@@ -656,7 +656,7 @@ function buildLi(d){
     li.className = "field";
     li.innerHTML = '<span class="field-name">'+d.name+'</span> <span class="value"></span>';
     li.addEventListener("click",processFieldClick,false);
-    li.number = fields.childNodes.length;
+    li.number = fields.getElementsByClassName("field").length;
     fields.appendChild(li);
 }
 

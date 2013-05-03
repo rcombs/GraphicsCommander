@@ -44,10 +44,10 @@ exports.prototype = new events.EventEmitter();
 
 exports.prototype.writeFlags = function(flags){
 	this.flags = flags;
-	var outArr = [];
-	var config = this.config;
-	for(var i = 0; i < config.tab.list.length; i++){
-		outArr.push(flags[config.tab.list[i]] || "");
-	}
-	this.chyron.writeTab(config.tab.message, config.tab.descriptor, outArr);
+//	var outArr = [];
+//	var config = this.config;
+//	for(var i = 0; i < config.tab.list.length; i++){
+//		outArr.push(flags[config.tab.list[i]] || "");
+//	}
+//	this.chyron.writeTab(config.tab.message, config.tab.descriptor, outArr);
 }
