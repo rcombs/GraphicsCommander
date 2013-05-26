@@ -3,10 +3,7 @@
     <head>
         <title>HTML5 Scoreboard OCR Demo</title>
         <style>
-            #divLeft{
-                float: left;
-            }
-            #divRight{
+            #divLeft, #divRight{
                 float: left;
             }
             #pos{
@@ -49,18 +46,19 @@
         <div id="interface">
             <div id="divLeft">
                 <button id="add">Add Field</button><select id="type">
-                    <option value="1">Single</option>
-                    <option value="4">Home/Away</option>
-                    <option value="2">2-Segment</option>
-                    <option value="7">7-Segment</option>
-                    <option value="5">Counter</option>
-                    <option value="6">String</option>
-                    <option value="3">Composite</option>
+                    <option value="single">Single</option>
+                    <option value="home_away">Home/Away</option>
+                    <option value="2_segment">2-Segment</option>
+                    <option value="7_segment">7-Segment</option>
+                    <option value="counter">Counter</option>
+                    <option value="string">String</option>
+                    <option value="composite">Composite</option>
                 </select><button id="setCorners">Set Corners</button><br>
                 <select id="slot"><option value="NEW">New...</option></option><optgroup id="files"></optgroup></select><button id="save">Save</button><button id="load">Load</button><br>
                 <ul id="fields">
                     
                 </ul>
+                Default Reference: <input type="color" id="defaultReference"/>
             </div>
             <div id="divRight">
                 <div id="dialog">
