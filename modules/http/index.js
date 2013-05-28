@@ -21,9 +21,6 @@ var exports = module.exports = function(config){
 				case "/favicon.png":
 					stream(resourceDir + "/favicon.png", req, res, "image/png");
 				break;
-				case "/shortcuts.png":
-					stream(resourceDir + "/shortcuts.png", req, res, "image/png");
-				break;
 			case "/current.json":
 				res.setHeader("Content-Type","application/json");
 				res.end(JSON.stringify(self.current));
@@ -50,7 +47,7 @@ var exports = module.exports = function(config){
 				stream(resourceDir + "/Baseball.htm", req, res, "text/html");
 				break;
 			default:
-				if(fs.existsSync(resourceDir + url.pathname)){
+				if(fs.existsSync(resourceDir + url.pathname) && fs.statSync(resourceDir + url.pathname).isFile()){
 					stream(resourceDir + url.pathname, req, res, mime.lookup(url.pathname));
 				}else{
 					var sent = false;

@@ -240,7 +240,7 @@ var globalReferenceColor = RGB2Lab({
 	b: 255
 });
 
-var Display = function(type, context, targetColor){
+var Display = function(type, context, threshold){
 	if(!(type in fieldTypes)){
 		throw new Error("Bad type!");
 	}
@@ -249,9 +249,8 @@ var Display = function(type, context, targetColor){
 	}
 	this.type = type;
 	this.points = [];
-	this.targetColor = targetColor;
+	this.threshold = threshold;
 	this.context = context;
-	this.threshold = 20;
 	this.referenceColor = globalReferenceColor;
 };
 
@@ -491,12 +490,7 @@ document.addEventListener("DOMContentLoaded",function(){
 			console.log("Stream refused: " + err);
 		});
 	}
-	document.getElementById("canvas").addEventListener("click", function(){
-		if(!rendering){
-			rendering = true;
-			render();
-		}
-	}, false);
+	render();
 	canvas.addEventListener("mousedown", function(event){
 		if(this.currentPoints){
 			var distance = 100000000;
@@ -552,7 +546,7 @@ document.addEventListener("DOMContentLoaded",function(){
 	document.getElementById("load").addEventListener("click", loadFile, false);
 	document.getElementById("add").addEventListener("click", function(){
 		var type = document.getElementById("type").value;
-		var d = new Display(type, document.getElementById("canvas").getContext("2d"), 110);
+		var d = new Display(type, document.getElementById("canvas").getContext("2d"), globalThreshold);
 		makeDialog(type);
 		startInput(type, d);
 	}, false);
@@ -577,7 +571,11 @@ document.addEventListener("DOMContentLoaded",function(){
 					if(displays[i].type == "string" || displays[i].type == "composite"){
 						continue;
 					}
-					displays[i].points = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
+					var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
+					for(var j = 0; j < newPoints.length; j++){
+						displays[i].points[j].x = newPoints[j].x;
+						displays[i].points[j].y = newPoints[j].y;
+					}
 					if(displays[i].type == "7_segment"){
 						displays[i].corners = matrixToPointArray(perstrans($M(displays[i].matrixCorners), conversionMatrix));
 					}
@@ -589,7 +587,14 @@ document.addEventListener("DOMContentLoaded",function(){
 	document.getElementById("defaultReference").addEventListener("change", function(){
 		globalReferenceColor = RGB2Lab(parseRGB(this.value));
 	}, false);
+	document.getElementById("defaultThreshold").addEventListener("change", function(){
+		globalThreshold = this.valueAsNumber;
+		document.getElementById("defaultThreshold_output") = this.value;
+	}, false);
+	document.getElementById("defaultThreshold_output").value = 8;
 }, false);
+
+var globalThreshold = 8;
 
 function setAllDots(){
 	dots = [];
@@ -758,6 +763,7 @@ function zeroPad(str, count){
 	while(str.length < count){
 		str = "0" + str;
 	}
+	return str;
 }
 
 function formatRGB(rgb, showHash){
@@ -786,15 +792,16 @@ function buildInfo(field){
 	'<br>' + 
 	(d.type == "composite" ? "" : '<ol id="cPoints"></ol>' +
 	(d.corners ? '<ol id="cornerPoints"></ol>' : "") +
-	(d.type == "string" ? "" : 'Threshold <input type="range" id="threshold" min="0" max="255" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/>') +
+	(d.type == "string" ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/>') +
 	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>') +
 	'<button id="delete">Delete</button>';
 	if(d.type != "composite"){
 		if(d.type != "string"){
 			document.getElementById("threshold").addEventListener("change", function updateThreshold(){
-				d.threshold = this.value;
+				d.threshold = this.valueAsNumber;
 				document.getElementById("threshold_output").value = this.value;
 			}, false);
+			document.getElementById("threshold_output").value = d.threshold;
 			document.getElementById("reference_color").addEventListener("change", function updateReferenceColor(){
 				console.log("Updating reference color: " + this.value);
 				d.referenceColor = RGB2Lab(parseRGB(this.value));
