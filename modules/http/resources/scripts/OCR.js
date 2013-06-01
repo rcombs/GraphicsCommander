@@ -272,6 +272,10 @@ Display.prototype = {
 
 var sevenSegmentMaps = [
 	{
+		map: [0, 0, 0, 0, 0, 0, 0],
+		value: 0
+	},
+	{
 		map: [1, 1, 1, 0, 1, 1, 1],
 		value: 0
 	},
@@ -436,7 +440,7 @@ function saveFile(){
 	}
 	var saveFiles = JSON.parse(localStorage.saves);
 	var lcName = name.toLowerCase();
-	saveFiles[lcName] = {name: name, displays: d, referenceColor: globalReferenceColor};
+	saveFiles[lcName] = {name: name, displays: d, referenceColor: globalReferenceColor, threshold: globalThreshold};
 	localStorage.saves = JSON.stringify(saveFiles);
 	localStorage.lastName = name;
 	updateSaveFileList(name);
@@ -457,6 +461,8 @@ function loadFile(){
 	var ctx = document.getElementById("canvas").getContext("2d");
 	window.displays = [];
 	globalReferenceColor = j[name].referenceColor;
+	document.getElementById("defaultReference").value = formatRGB(Lab2RGB(globalReferenceColor), true);
+	document.getElementById("defaultThreshold_output").value = document.getElementById("defaultThreshold").value = globalThreshold = j[name].threshold;
 	document.getElementById("fields").innerHTML = "";
 	var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
 	for(var i = 0; i < displays.length; i++){
@@ -586,12 +592,21 @@ document.addEventListener("DOMContentLoaded",function(){
 	}, false);
 	document.getElementById("defaultReference").addEventListener("change", function(){
 		globalReferenceColor = RGB2Lab(parseRGB(this.value));
+		if(document.getElementById("propogateDefaults").checked){
+                        for(var i = 0; i < displays.length; i++){
+                                displays[i].referenceColor = globalReferenceColor;
+                        }
+                }
 	}, false);
 	document.getElementById("defaultThreshold").addEventListener("change", function(){
 		globalThreshold = this.valueAsNumber;
-		document.getElementById("defaultThreshold_output") = this.value;
+		document.getElementById("defaultThreshold_output").value = this.value;
+		if(document.getElementById("propogateDefaults").checked){
+			for(var i = 0; i < displays.length; i++){
+				displays[i].threshold = globalThreshold;
+			}
+		}
 	}, false);
-	document.getElementById("defaultThreshold_output").value = 8;
 }, false);
 
 var globalThreshold = 8;
@@ -790,13 +805,13 @@ function buildInfo(field){
 	document.getElementById("dialog").innerHTML = '<span class="field-name">'+field.getElementsByClassName("field-name")[0].innerHTML+'</span>' +
 	'<button id="setFieldCorners">Set Field Corners</button>' +
 	'<br>' + 
-	(d.type == "composite" ? "" : '<ol id="cPoints"></ol>' +
+	(d.type == "string" ? "" : '<ol id="cPoints"></ol>' +
 	(d.corners ? '<ol id="cornerPoints"></ol>' : "") +
-	(d.type == "string" ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/>') +
+	(d.type == "composite" ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/><br>') +
 	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>') +
 	'<button id="delete">Delete</button>';
-	if(d.type != "composite"){
-		if(d.type != "string"){
+	if(d.type != "string"){
+		if(d.type != "composite"){
 			document.getElementById("threshold").addEventListener("change", function updateThreshold(){
 				d.threshold = this.valueAsNumber;
 				document.getElementById("threshold_output").value = this.value;
@@ -808,16 +823,18 @@ function buildInfo(field){
 			}, false);
 		}
 		var select = document.getElementById("fieldName");
-		for(var i = 0; i < fieldNames.length; i++){
-			var el = document.createElement("option");
-			el.value = fieldNames[i].internal;
-			el.innerHTML = fieldNames[i].friendly;
-			if(el.value == d.fieldName){
-				el.selected = true;
+		if(select){
+			for(var i = 0; i < fieldNames.length; i++){
+				var el = document.createElement("option");
+				el.value = fieldNames[i].internal;
+				el.innerHTML = fieldNames[i].friendly;
+				if(el.value == d.fieldName){
+					el.selected = true;
+				}
+				select.appendChild(el);
 			}
-			select.appendChild(el);
+			select.addEventListener("change",function(){if(this.value != ""){d.fieldName = this.value}else{this.fieldName = false;}},false);
 		}
-		select.addEventListener("change",function(){if(this.value != ""){d.fieldName = this.value}else{this.fieldName = false;}},false);
 	}
 	document.getElementById("setFieldCorners").addEventListener("click", function(){
 		if(this.active){

@@ -9,6 +9,9 @@
             #pos{
                 color: red;
             }
+            input[type="range"]{
+                width: 100px;
+            }
             .field{
                 min-height: 20px;
                 min-width: 200px;
@@ -59,8 +62,9 @@
                 <ul id="fields">
                     
                 </ul>
-                Default Reference: <input type="color" id="defaultReference"/>
-                Default Threshold: <input type="range" id="defaultThreshold" min="0" step="0.5" max="150" value="8"><output for="defaultThreshold" id="defaultThreshold_output" value="8"></output>
+                Default Reference: <input type="color" id="defaultReference"/><br>
+                Default Threshold: <input type="range" id="defaultThreshold" min="0" step="0.5" max="150" value="8"><output for="defaultThreshold" id="defaultThreshold_output" value="8"></output><br>
+		Propogate Defaults: <input type="checkbox" id="propogateDefaults"></input>
             </div>
             <div id="divRight">
                 <div id="dialog">
