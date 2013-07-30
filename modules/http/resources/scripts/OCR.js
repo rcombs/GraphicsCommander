@@ -444,11 +444,28 @@ function saveFile(){
 		d.push(x);
 	}
 	var saveFiles = JSON.parse(localStorage.saves);
-	var lcName = name.toLowerCase();
-	saveFiles[lcName] = {name: name, displays: d, referenceColor: globalReferenceColor, threshold: globalThreshold};
+	saveFiles[name] = {name: name, displays: d, referenceColor: globalReferenceColor, threshold: globalThreshold};
 	localStorage.saves = JSON.stringify(saveFiles);
 	localStorage.lastName = name;
 	updateSaveFileList(name);
+}
+
+function deleteFile(){
+	var name = document.getElementById("slot").value;
+	if(name == "NEW"){
+		alert("Choose a file to delete.");
+		return;
+	}
+	if(!confirm("Are you sure you want to delete this file?")){
+		return;
+	}
+	var saveFiles = JSON.parse(localStorage.saves);
+	delete saveFiles[name];
+	localStorage.saves = JSON.stringify(saveFiles);
+	if(localStorage.lastName == name){
+		localStorage.lastName = "";
+	}
+	updateSaveFileList();
 }
 
 function loadFile(){
@@ -556,6 +573,7 @@ document.addEventListener("DOMContentLoaded",function(){
 	}
 	document.getElementById("save").addEventListener("click", saveFile, false);
 	document.getElementById("load").addEventListener("click", loadFile, false);
+	document.getElementById("delete").addEventListener("click", deleteFile, false);
 	document.getElementById("add").addEventListener("click", function(){
 		var type = document.getElementById("type").value;
 		var d = new Display(type, document.getElementById("canvas").getContext("2d"), globalThreshold);
