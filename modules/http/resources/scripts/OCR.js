@@ -39,7 +39,8 @@ var fieldTypes = {
 	"7_segment": {},
 	"counter": {},
 	"string": {},
-	"composite": {}
+	"composite": {},
+	"switch": {}
 };
 
 var sRGBMatrix = $M([
@@ -257,7 +258,7 @@ var Display = function(type, context, threshold){
 Display.prototype = {
 	getPointValue: function getPointValue(i){
 		if(this.points[i] !== undefined){
-			if(this.type == "composite"){
+			if(this.type == "composite" || this.type == "switch"){
 				return displays[this.points[i]].getValue();
 			}else{
 				var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3).data);
@@ -329,6 +330,9 @@ Display.prototype.getValue = function getValue(){
 			str += displays[this.points[i]].getValue();
 		}
 		return str;
+	}
+	if(this.type == "switch"){
+		return this.getPointValue(this.which);
 	}
 	if(this.type == "string"){
 		return this.points[0];
@@ -424,8 +428,9 @@ function saveFile(){
 	for(var i = 0; i < displays.length; i++){
 		var x = {};
 		x.type = displays[i].type;
-		if(["string", "composite"].indexOf(x.type) != -1){
+		if(["string", "composite", "switch"].indexOf(x.type) != -1){
 			x.points = displays[i].points;
+			x.which = displays[i].which;
 		}else{
 			x.points = perstrans(pointArrayToMatrix(displays[i].points), conversionMatrix).elements;
 		}
@@ -467,8 +472,9 @@ function loadFile(){
 	var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
 	for(var i = 0; i < displays.length; i++){
 		var d = new Display(displays[i].type,ctx,displays[i].threshold);
-		if(d.type == "composite" || d.type == "string"){
+		if(d.type == "composite" || d.type == "string" || d.type == "switch"){
 			d.points = displays[i].points;
+			d.which = displays[i].which;
 		}else{
 			d.points = matrixToPointArray(perstrans($M(displays[i].points), conversionMatrix));
 			d.matrixPoints = displays[i].points;
@@ -574,7 +580,7 @@ document.addEventListener("DOMContentLoaded",function(){
 			document.getElementById("canvas").moveEvent = function(){
 				var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
 				for(var i = 0; i < displays.length; i++){
-					if(displays[i].type == "string" || displays[i].type == "composite"){
+					if(displays[i].type == "string" || displays[i].type == "composite" || displays[i].type == "switch"){
 						continue;
 					}
 					var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
@@ -614,7 +620,7 @@ var globalThreshold = 8;
 function setAllDots(){
 	dots = [];
 	for(var i = 0; i < displays.length; i++){
-		if(displays[i].type == "string" || displays[i].type == "composite"){
+		if(displays[i].type == "string" || displays[i].type == "composite" || displays[i].type == "switch"){
 			continue;
 		}
 		for(var j = 0; j < displays[i].points.length; j++){
@@ -628,6 +634,7 @@ var dialogs = {
 	"single": "Click on the pixel.",
 	"2_segment": 'Click on the <span id="pos">first</span> segment.',
 	"composite": 'Choose the fields you want to use and press <button onclick="finishComposite();">OK</button>',
+	"switch": 'Choose the fields you want to use and press <button onclick="finishComposite();">OK</button>',
 	"home_away": 'Click on the pixel for <span id="pos">home</span>.',
 	"counter": 'Click on the <span id="pos">first</span> pixel.',
 	"string": 'Enter the fixed string <input type="text" placeholder="here" id="fixedText"></input><button onclick="finishFixed();">OK</button>',
@@ -743,7 +750,7 @@ function deleteField(number,noConfirm){
 		displays.splice(number,1);
 		// Delete any composite fields that use this one
 		for(var i = 0; i < displays.length; i++){
-			if(displays[i].type == "composite"){
+			if(displays[i].type == "composite" || displays[i].type == "switch"){
 				for(var j = 0; j < displays[i].points.length; j++){
 					if(displays[i].points[j] == number){
 						deleteField(i,true);
@@ -807,11 +814,11 @@ function buildInfo(field){
 	'<br>' + 
 	(d.type == "string" ? "" : '<ol id="cPoints"></ol>' +
 	(d.corners ? '<ol id="cornerPoints"></ol>' : "") +
-	(d.type == "composite" ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/><br>') +
+	((d.type == "composite" || d.type == "switch") ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/><br>') +
 	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>') +
 	'<button id="delete">Delete</button>';
 	if(d.type != "string"){
-		if(d.type != "composite"){
+		if(d.type != "composite" && d.type != "switch"){
 			document.getElementById("threshold").addEventListener("change", function updateThreshold(){
 				d.threshold = this.valueAsNumber;
 				document.getElementById("threshold_output").value = this.value;
@@ -875,8 +882,8 @@ function buildInfo(field){
 			li.number = i;
 			li.display = d;
 			li.className = "point";
-			if(d.type == "composite"){
-				li.innerHTML = '<span class="name">'+displays[d.points[i]].name+'</span> <span class="value"></span>';
+			if(d.type == "composite" || d.type == "switch"){
+				li.innerHTML = '<span class="name' + (i == d.which ? " switch_on" : "") + '">'+displays[d.points[i]].name+'</span> <span class="value"></span>';
 			}else{
 				li.innerHTML = '<span class="name">'+d.points[i].x+", "+d.points[i].y+'</span> <span class="value"></span>';
 				li.x = d.points[i].x;
@@ -971,7 +978,7 @@ function finishNewInput(d){
 		d.corners = d.points;
 		d.points = matrixToPointArray(perstrans(pointMatrices[d.type], mapSquareToQuad(pointArrayToMatrix(d.points))));
 	}
-	if(d.type != "string" && d.type != "composite"){
+	if(d.type != "string" && d.type != "composite" && d.type != "switch"){
 		d.matrixPoints = perstrans(pointArrayToMatrix(d.points), mapQuadToSquare(pointArrayToMatrix(corners))).elements;
 	}
 	displays.push(d);
@@ -986,7 +993,7 @@ var fixedDisplay = false;
 var pos = ["top", "top-left", "top-right", "center", "bottom-left", "bottom-right", "bottom"];
 var cornerPos = ["top-left", "top-right", "bottom-right", "bottom-left"];
 function startInput(type, d){
-	if(type == "composite"){
+	if(type == "composite" || type == "switch"){
 		buildingComposite = true;
 		compositeSegments = [];
 		compositeDisplay = d;
@@ -1069,6 +1076,14 @@ function updateValues(){
 			if(d.type == "composite"){
 				valueField.className = "value other";
 				valueField.innerHTML = value;
+			}else if(d.type == "switch"){
+				valueField.className = "value " + (i == d.which ? "on" : "off");
+				valueField.innerHTML = value;
+				valueField.i = i;
+				valueField.addEventListener("click", function(){
+					d.which = this.i;
+					updateValues();
+				}, false);
 			}else{
 				if(value){
 					valueField.className = "value on";
