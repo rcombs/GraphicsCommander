@@ -241,7 +241,7 @@ var globalReferenceColor = RGB2Lab({
 	b: 255
 });
 
-var Display = function(type, context, threshold){
+var Display = function(type, context, settings){
 	if(!(type in fieldTypes)){
 		throw new Error("Bad type!");
 	}
@@ -250,9 +250,11 @@ var Display = function(type, context, threshold){
 	}
 	this.type = type;
 	this.points = [];
-	this.threshold = threshold;
+	this.settings = settings || {
+		referenceColor: globalReferenceColor,
+		threshold: globalThreshold
+	};
 	this.context = context;
-	this.referenceColor = globalReferenceColor;
 };
 
 Display.prototype = {
@@ -262,8 +264,8 @@ Display.prototype = {
 				return displays[this.points[i]].getValue();
 			}else{
 				var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3).data);
-				var difference = compareLab(this.referenceColor, Lab);
-				return Math.abs(difference) < this.threshold;
+				var difference = compareLab(this.settings.referenceColor, Lab);
+				return Math.abs(difference) < this.settings.threshold;
 			}
 		}else{
 			return false;
@@ -323,6 +325,16 @@ var sevenSegmentMaps = [
 ];
 
 Display.prototype.getValue = function getValue(){
+	var value = this.getRawValue();
+	if(this.settings.collapse0){
+		if(value == "0"){
+			value = "";
+		}
+	}
+	return value;
+}
+
+Display.prototype.getRawValue = function getRawValue(){
 	var points = [];
 	if(this.type == "composite"){
 		var str = "";
@@ -332,7 +344,7 @@ Display.prototype.getValue = function getValue(){
 		return str;
 	}
 	if(this.type == "switch"){
-		return this.getPointValue(this.which);
+		return this.getPointValue(this.settings.which);
 	}
 	if(this.type == "string"){
 		return this.points[0];
@@ -428,19 +440,15 @@ function saveFile(){
 	for(var i = 0; i < displays.length; i++){
 		var x = {};
 		x.type = displays[i].type;
+		x.settings = displays[i].settings;
 		if(["string", "composite", "switch"].indexOf(x.type) != -1){
 			x.points = displays[i].points;
-			x.which = displays[i].which;
 		}else{
 			x.points = perstrans(pointArrayToMatrix(displays[i].points), conversionMatrix).elements;
 		}
 		if(displays[i].corners){
 			x.corners = perstrans(pointArrayToMatrix(displays[i].corners), conversionMatrix).elements;
 		}
-		x.threshold = displays[i].threshold;
-		x.name = displays[i].name;
-		x.fieldName = displays[i].fieldName;
-		x.referenceColor = displays[i].referenceColor;
 		d.push(x);
 	}
 	var saveFiles = JSON.parse(localStorage.saves);
@@ -488,10 +496,10 @@ function loadFile(){
 	document.getElementById("fields").innerHTML = "";
 	var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
 	for(var i = 0; i < displays.length; i++){
-		var d = new Display(displays[i].type,ctx,displays[i].threshold);
+		var d = new Display(displays[i].type,ctx,displays[i].settings);
+		d.settings = displays[i].settings;
 		if(d.type == "composite" || d.type == "string" || d.type == "switch"){
 			d.points = displays[i].points;
-			d.which = displays[i].which;
 		}else{
 			d.points = matrixToPointArray(perstrans($M(displays[i].points), conversionMatrix));
 			d.matrixPoints = displays[i].points;
@@ -500,9 +508,6 @@ function loadFile(){
 			d.corners = matrixToPointArray(perstrans($M(displays[i].corners), conversionMatrix));
 			d.matrixCorners = displays[i].corners;
 		}
-		d.name = displays[i].name;
-		d.fieldName = displays[i].fieldName;
-		d.referenceColor = displays[i].referenceColor;
 		window.displays.push(d);
 		buildLi(d);
 	}
@@ -576,7 +581,7 @@ document.addEventListener("DOMContentLoaded",function(){
 	document.getElementById("delete").addEventListener("click", deleteFile, false);
 	document.getElementById("add").addEventListener("click", function(){
 		var type = document.getElementById("type").value;
-		var d = new Display(type, document.getElementById("canvas").getContext("2d"), globalThreshold);
+		var d = new Display(type, document.getElementById("canvas").getContext("2d"));
 		makeDialog(type);
 		startInput(type, d);
 	}, false);
@@ -618,7 +623,7 @@ document.addEventListener("DOMContentLoaded",function(){
 		globalReferenceColor = RGB2Lab(parseRGB(this.value));
 		if(document.getElementById("propogateDefaults").checked){
                         for(var i = 0; i < displays.length; i++){
-                                displays[i].referenceColor = globalReferenceColor;
+                                displays[i].settings.referenceColor = globalReferenceColor;
                         }
                 }
 	}, false);
@@ -627,7 +632,7 @@ document.addEventListener("DOMContentLoaded",function(){
 		document.getElementById("defaultThreshold_output").value = this.value;
 		if(document.getElementById("propogateDefaults").checked){
 			for(var i = 0; i < displays.length; i++){
-				displays[i].threshold = globalThreshold;
+				displays[i].settings.threshold = globalThreshold;
 			}
 		}
 	}, false);
@@ -829,22 +834,23 @@ function buildInfo(field){
 	var d = displays[field.number];
 	document.getElementById("dialog").innerHTML = '<span class="field-name">'+field.getElementsByClassName("field-name")[0].innerHTML+'</span>' +
 	'<button id="setFieldCorners">Set Field Corners</button>' +
-	'<br>' + 
+	'<br>' +
 	(d.type == "string" ? "" : '<ol id="cPoints"></ol>' +
 	(d.corners ? '<ol id="cornerPoints"></ol>' : "") +
-	((d.type == "composite" || d.type == "switch") ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.threshold+'"><output for="threshold" id="threshold_output" value="'+d.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.referenceColor), true) + '"/><br>') +
-	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>') +
+	((d.type == "composite" || d.type == "switch") ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.settings.threshold+'"><output for="threshold" id="threshold_output" value="'+d.settings.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.settings.referenceColor), true) + '"/><br>') +
+	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>' +
+	'<label for="collapse0">Collapse 0 to Blank</label><input type="checkbox" id="collapse0"' + (d.settings.collapse0 ? ' checked' : '') + '><br>') +
 	'<button id="delete">Delete</button>';
 	if(d.type != "string"){
 		if(d.type != "composite" && d.type != "switch"){
 			document.getElementById("threshold").addEventListener("change", function updateThreshold(){
-				d.threshold = this.valueAsNumber;
+				d.settings.threshold = this.valueAsNumber;
 				document.getElementById("threshold_output").value = this.value;
 			}, false);
-			document.getElementById("threshold_output").value = d.threshold;
+			document.getElementById("threshold_output").value = d.settings.threshold;
 			document.getElementById("reference_color").addEventListener("change", function updateReferenceColor(){
 				console.log("Updating reference color: " + this.value);
-				d.referenceColor = RGB2Lab(parseRGB(this.value));
+				d.settings.referenceColor = RGB2Lab(parseRGB(this.value));
 			}, false);
 		}
 		var select = document.getElementById("fieldName");
@@ -853,13 +859,22 @@ function buildInfo(field){
 				var el = document.createElement("option");
 				el.value = fieldNames[i].internal;
 				el.innerHTML = fieldNames[i].friendly;
-				if(el.value == d.fieldName){
+				if(el.value == d.settings.fieldName){
 					el.selected = true;
 				}
 				select.appendChild(el);
 			}
-			select.addEventListener("change",function(){if(this.value != ""){d.fieldName = this.value}else{this.fieldName = false;}},false);
+			select.addEventListener("change", function(){
+				if(this.value != ""){
+					d.settings.fieldName = this.value
+				}else{
+					delete this.settings.fieldName;
+				}
+			}, false);
 		}
+		document.getElementById("collapse0").addEventListener("change", function(){
+			d.settings.collapse0 = this.checked;
+		}, false);
 	}
 	document.getElementById("setFieldCorners").addEventListener("click", function(){
 		if(this.active){
@@ -901,7 +916,7 @@ function buildInfo(field){
 			li.display = d;
 			li.className = "point";
 			if(d.type == "composite" || d.type == "switch"){
-				li.innerHTML = '<span class="name' + (i == d.which ? " switch_on" : "") + '">'+displays[d.points[i]].name+'</span> <span class="value"></span>';
+				li.innerHTML = '<span class="name' + (i == d.settings.which ? " switch_on" : "") + '">'+displays[d.points[i]].settings.name+'</span> <span class="value"></span>';
 			}else{
 				li.innerHTML = '<span class="name">'+d.points[i].x+", "+d.points[i].y+'</span> <span class="value"></span>';
 				li.x = d.points[i].x;
@@ -977,7 +992,7 @@ function buildLi(d){
 	var fields = document.getElementById("fields");
 	var li = document.createElement("li");
 	li.className = "field";
-	li.innerHTML = '<span class="field-name">'+d.name+'</span> <span class="value"></span>';
+	li.innerHTML = '<span class="field-name">'+d.settings.name+'</span> <span class="value"></span>';
 	li.addEventListener("click",processFieldClick,false);
 	li.number = fields.getElementsByClassName("field").length;
 	fields.appendChild(li);
@@ -987,9 +1002,9 @@ function finishNewInput(d){
 	document.getElementById("dialog").innerHTML = "";
 	var canvas = document.getElementById("canvas").nextEvent = false;
 	if(d.type == "string"){
-		d.name = 'FIXED: "' + d.points[0] + '"';
+		d.settings.name = 'FIXED: "' + d.points[0] + '"';
 	}else{
-		d.name = prompt("Name the display.");
+		d.settings.name = prompt("Name the display.");
 	}
 	if(pointMatrices[d.type]){
 		// Matrix transforms to make the 7-segments easier
@@ -1080,8 +1095,8 @@ function updateValues(){
 		var field = fields.getElementsByClassName("field")[i];
 		var value = displays[i].getValue();
 		field.getElementsByClassName("value")[0].innerHTML = value;
-		if(displays[i].fieldName){
-			sendObj[displays[i].fieldName] = value.toString();
+		if(displays[i].settings.fieldName){
+			sendObj[displays[i].settings.fieldName] = value.toString();
 		}
 	}
 	socket.emit("update",sendObj);
@@ -1095,11 +1110,11 @@ function updateValues(){
 				valueField.className = "value other";
 				valueField.innerHTML = value;
 			}else if(d.type == "switch"){
-				valueField.className = "value " + (i == d.which ? "on" : "off");
+				valueField.className = "value " + (i == d.settings.which ? "on" : "off");
 				valueField.innerHTML = value;
 				valueField.i = i;
 				valueField.addEventListener("click", function(){
-					d.which = this.i;
+					d.settings.which = this.i;
 					updateValues();
 				}, false);
 			}else{
