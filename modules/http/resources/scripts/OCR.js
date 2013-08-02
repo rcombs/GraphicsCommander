@@ -241,6 +241,8 @@ var globalReferenceColor = RGB2Lab({
 	b: 255
 });
 
+var globalReferenceColorOff = {L: 0, a: 0, b: 0}
+
 var Display = function(type, context, settings){
 	if(!(type in fieldTypes)){
 		throw new Error("Bad type!");
@@ -252,6 +254,7 @@ var Display = function(type, context, settings){
 	this.points = [];
 	this.settings = settings || {
 		referenceColor: globalReferenceColor,
+		referenceColorOff: globalReferenceColorOff,
 		threshold: globalThreshold
 	};
 	this.context = context;
@@ -263,9 +266,12 @@ Display.prototype = {
 			if(this.type == "composite" || this.type == "switch"){
 				return displays[this.points[i]].getValue();
 			}else{
-				var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3).data);
-				var difference = compareLab(this.settings.referenceColor, Lab);
-				return Math.abs(difference) < this.settings.threshold;
+//				console.log(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3));
+				var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 0, this.points[i].y - 0, 1, 1).data);
+				var difference1 = compareLab(this.settings.referenceColor, Lab) * this.settings.threshold;
+				var difference2 = compareLab(this.settings.referenceColorOff || {L: 0, a: 0, b: 0}, Lab);
+				return Math.abs(difference1) < Math.abs(difference2);
+//				return Math.abs(difference) < this.settings.threshold;
 			}
 		}else{
 			return false;
@@ -452,7 +458,7 @@ function saveFile(){
 		d.push(x);
 	}
 	var saveFiles = JSON.parse(localStorage.saves);
-	saveFiles[name] = {name: name, displays: d, referenceColor: globalReferenceColor, threshold: globalThreshold};
+	saveFiles[name] = {name: name, displays: d, referenceColor: globalReferenceColor, referenceColorOff: globalReferenceColorOff, threshold: globalThreshold};
 	localStorage.saves = JSON.stringify(saveFiles);
 	localStorage.lastName = name;
 	updateSaveFileList(name);
@@ -491,7 +497,9 @@ function loadFile(){
 	var ctx = document.getElementById("canvas").getContext("2d");
 	window.displays = [];
 	globalReferenceColor = j[name].referenceColor;
+	globalReferenceColorOff = j[name].referenceColorOff || {L: 0, a: 0, b: 0};
 	document.getElementById("defaultReference").value = formatRGB(Lab2RGB(globalReferenceColor), true);
+	document.getElementById("defaultReferenceOff").value = formatRGB(Lab2RGB(globalReferenceColorOff), true);
 	document.getElementById("defaultThreshold_output").value = document.getElementById("defaultThreshold").value = globalThreshold = j[name].threshold;
 	document.getElementById("fields").innerHTML = "";
 	var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
@@ -626,6 +634,15 @@ document.addEventListener("DOMContentLoaded",function(){
                                 displays[i].settings.referenceColor = globalReferenceColor;
                         }
                 }
+	}, false);
+	document.getElementById("defaultReferenceOff").addEventListener("change", function(){
+//		console.log(this.value);
+		globalReferenceColorOff = RGB2Lab(parseRGB(this.value));
+		if(document.getElementById("propogateDefaults").checked){
+			for(var i = 0; i < displays.length; i++){
+				displays[i].settings.referenceColorOff = globalReferenceColorOff;
+			}
+		}
 	}, false);
 	document.getElementById("defaultThreshold").addEventListener("change", function(){
 		globalThreshold = this.valueAsNumber;
@@ -837,10 +854,10 @@ function buildInfo(field){
 	'<br>' +
 	(d.type == "string" ? "" : '<ol id="cPoints"></ol>' +
 	(d.corners ? '<ol id="cornerPoints"></ol>' : "") +
-	((d.type == "composite" || d.type == "switch") ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.settings.threshold+'"><output for="threshold" id="threshold_output" value="'+d.settings.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.settings.referenceColor), true) + '"/><br>') +
+	((d.type == "composite" || d.type == "switch") ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.settings.threshold+'"><output for="threshold" id="threshold_output" value="'+d.settings.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.settings.referenceColor), true) + '"/><br>Reference Color Off <input type="color" id="reference_color_off" value="' + formatRGB(Lab2RGB(d.settings.referenceColorOff || globalReferenceColorOff), true) + '"/><br>') +
 	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>' +
 	'<label for="collapse0">Collapse 0 to Blank</label><input type="checkbox" id="collapse0"' + (d.settings.collapse0 ? ' checked' : '') + '><br>') +
-	'<button id="delete">Delete</button>';
+	'<button id="deleteField">Delete</button>';
 	if(d.type != "string"){
 		if(d.type != "composite" && d.type != "switch"){
 			document.getElementById("threshold").addEventListener("change", function updateThreshold(){
@@ -849,8 +866,10 @@ function buildInfo(field){
 			}, false);
 			document.getElementById("threshold_output").value = d.settings.threshold;
 			document.getElementById("reference_color").addEventListener("change", function updateReferenceColor(){
-				console.log("Updating reference color: " + this.value);
 				d.settings.referenceColor = RGB2Lab(parseRGB(this.value));
+			}, false);
+			document.getElementById("reference_color_off").addEventListener("change", function updateReferenceColorOff(){
+				d.settings.referenceColorOff = RGB2Lab(parseRGB(this.value));
 			}, false);
 		}
 		var select = document.getElementById("fieldName");
@@ -899,8 +918,8 @@ function buildInfo(field){
 			}
 		}
 	}, false);
-	document.getElementById("delete").addEventListener("click",function(){deleteField(this.number);rebuildFields();clearDialog();},false);
-	document.getElementById("delete").number = field.number;
+	document.getElementById("deleteField").addEventListener("click",function(){deleteField(this.number);rebuildFields();clearDialog();},false);
+	document.getElementById("deleteField").number = field.number;
 	dots = [];
 	shapePoints = [];
 	if(lineMatrices[d.type]){
