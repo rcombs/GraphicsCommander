@@ -464,6 +464,17 @@ function saveFile(){
 	updateSaveFileList(name);
 }
 
+function clearFields(){
+	if(!confirm("Are you sure you want to clear all fields?")){
+		return;
+	}
+	while(displays.length){
+		deleteField(0, true);
+		rebuildFields();
+		clearDialog();
+	}
+}
+
 function deleteFile(){
 	var name = document.getElementById("slot").value;
 	if(name == "NEW"){
@@ -587,6 +598,7 @@ document.addEventListener("DOMContentLoaded",function(){
 	document.getElementById("save").addEventListener("click", saveFile, false);
 	document.getElementById("load").addEventListener("click", loadFile, false);
 	document.getElementById("delete").addEventListener("click", deleteFile, false);
+	document.getElementById("clear").addEventListener("click", clearFields, false);
 	document.getElementById("add").addEventListener("click", function(){
 		var type = document.getElementById("type").value;
 		var d = new Display(type, document.getElementById("canvas").getContext("2d"));
