@@ -86,6 +86,9 @@ function runEdits(inFlags){
 }
 
 function sendOuts(){
+	if(config.debug){
+		console.log(flags);
+	}
 	var finalFlags = runEdits(flags);
 	var outModules = modules.io.concat(modules.out);
 	for(var i = 0; i < outModules.length; i++){

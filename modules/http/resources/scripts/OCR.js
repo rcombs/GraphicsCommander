@@ -968,6 +968,14 @@ function buildInfo(field){
 			li.className = "point";
 			if(d.type == "composite" || d.type == "switch"){
 				li.innerHTML = '<span class="name' + (i == d.settings.which ? " switch_on" : "") + '">'+displays[d.points[i]].settings.name+'</span> <span class="value"></span>';
+				if(d.type == "switch"){
+					li.i = i;
+					li.d = d;
+					li.addEventListener("click", function(){
+						this.d.settings.which = this.i;
+						updateValues();
+					}, false);
+				}
 			}else{
 				li.innerHTML = '<span class="name">'+d.points[i].x+", "+d.points[i].y+'</span> <span class="value"></span>';
 				li.x = d.points[i].x;
@@ -983,9 +991,13 @@ function buildInfo(field){
 						dots = oldDots;
 					}
 				},false);
-				if(!cornerPoints){
+				//if(!cornerPoints){
 					li.addEventListener("click",function(){
 						var li = this;
+						var lis = li.parentNode.childNodes;
+						for(var i = 0; i < lis.length; i++){
+							lis[i].style.backgroundColor = "initial";
+						}
 						lockPoints = true;
 						document.getElementById("canvas").currentPoint = this.display.points[this.number];
 						dots = [document.getElementById("canvas").currentPoint];
@@ -998,7 +1010,7 @@ function buildInfo(field){
 							buildInfo(field);
 						}
 					});
-				}
+				//}
 				dots.push(d.points[i]);
 			}
 			points.appendChild(li);
@@ -1164,10 +1176,6 @@ function updateValues(){
 				valueField.className = "value " + (i == d.settings.which ? "on" : "off");
 				valueField.innerHTML = value;
 				valueField.i = i;
-				valueField.addEventListener("click", function(){
-					d.settings.which = this.i;
-					updateValues();
-				}, false);
 			}else{
 				if(value){
 					valueField.className = "value on";
