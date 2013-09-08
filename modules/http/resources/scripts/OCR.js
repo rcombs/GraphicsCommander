@@ -610,6 +610,9 @@ document.addEventListener("DOMContentLoaded",function(){
 		makeDialog(type);
 		startInput(type, d);
 	}, false);
+	document.getElementById("clearCorners").addEventListener("click", function(){
+		corners = false;
+	});
 	document.getElementById("setCorners").addEventListener("click", function(){
 		if(this.active){
 			document.getElementById("canvas").currentPoints = false;
@@ -620,6 +623,16 @@ document.addEventListener("DOMContentLoaded",function(){
 			dots = [];
 			localStorage.lastCorners = JSON.stringify(corners);
 		}else{
+			var setPoints = true;
+			if(corners == false){
+				corners = [
+					{x: 0, y: 0},
+					{x: 640, y: 0},
+					{x: 640, y: 480},
+					{x: 0, y: 480}
+				];
+				setPoints = false;
+			}
 			document.getElementById("canvas").currentPoints = corners;
 			shapePoints = corners;
 			shapeEnd = true;
@@ -631,10 +644,12 @@ document.addEventListener("DOMContentLoaded",function(){
 					if(displays[i].type == "string" || displays[i].type == "composite" || displays[i].type == "switch"){
 						continue;
 					}
-					var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
-					for(var j = 0; j < newPoints.length; j++){
-						displays[i].points[j].x = newPoints[j].x;
-						displays[i].points[j].y = newPoints[j].y;
+					if(setPoints){
+						var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
+						for(var j = 0; j < newPoints.length; j++){
+							displays[i].points[j].x = newPoints[j].x;
+							displays[i].points[j].y = newPoints[j].y;
+						}
 					}
 					if(displays[i].type == "7_segment"){
 						displays[i].corners = matrixToPointArray(perstrans($M(displays[i].matrixCorners), conversionMatrix));
@@ -1000,7 +1015,7 @@ function buildInfo(field){
 						}
 						lockPoints = true;
 						document.getElementById("canvas").currentPoint = this.display.points[this.number];
-						dots = [document.getElementById("canvas").currentPoint];
+						dots = [this.display.points[this.number]];
 						li.style.backgroundColor = "#00CC00";
 						document.getElementById("canvas").nextEvent = function(){
 							this.currentPoint = false;
