@@ -3,9 +3,6 @@ The contents of this file may be used for any purpose, with the exception of use
 */
 "use strict";
 var socket = io.connect();
-if(typeof requestAnimationFrame == "undefined" && typeof webkitRequestAnimationFrame != "undefined"){
-	window.requestAnimationFrame = webkitRequestAnimationFrame;
-}
 
 var pointMatrices = {
 	"7_segment": $M([
@@ -241,6 +238,8 @@ var globalReferenceColor = RGB2Lab({
 	b: 255
 });
 
+var globalReferenceColorOff = {L: 0, a: 0, b: 0}
+
 var Display = function(type, context, settings){
 	if(!(type in fieldTypes)){
 		throw new Error("Bad type!");
@@ -252,7 +251,9 @@ var Display = function(type, context, settings){
 	this.points = [];
 	this.settings = settings || {
 		referenceColor: globalReferenceColor,
-		threshold: globalThreshold
+		referenceColorOff: globalReferenceColorOff,
+		threshold: globalThreshold,
+		LabWeight: globalLabWeight
 	};
 	this.context = context;
 };
@@ -263,9 +264,12 @@ Display.prototype = {
 			if(this.type == "composite" || this.type == "switch"){
 				return displays[this.points[i]].getValue();
 			}else{
-				var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3).data);
-				var difference = compareLab(this.settings.referenceColor, Lab);
-				return Math.abs(difference) < this.settings.threshold;
+//				console.log(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3));
+				var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 0, this.points[i].y - 0, 1, 1).data);
+				var difference1 = compareLab(this.settings.referenceColor, Lab, this.settings.LabWeight, 1) * this.settings.threshold;
+				var difference2 = compareLab(this.settings.referenceColorOff || {L: 0, a: 0, b: 0}, Lab, this.settings.LabWeight, 1);
+				return Math.abs(difference1) < Math.abs(difference2);
+//				return Math.abs(difference) < this.settings.threshold;
 			}
 		}else{
 			return false;
@@ -452,10 +456,21 @@ function saveFile(){
 		d.push(x);
 	}
 	var saveFiles = JSON.parse(localStorage.saves);
-	saveFiles[name] = {name: name, displays: d, referenceColor: globalReferenceColor, threshold: globalThreshold};
+	saveFiles[name] = {name: name, displays: d, referenceColor: globalReferenceColor, referenceColorOff: globalReferenceColorOff, threshold: globalThreshold, LabWeight: globalLabWeight};
 	localStorage.saves = JSON.stringify(saveFiles);
 	localStorage.lastName = name;
 	updateSaveFileList(name);
+}
+
+function clearFields(){
+	if(!confirm("Are you sure you want to clear all fields?")){
+		return;
+	}
+	while(displays.length){
+		deleteField(0, true);
+		rebuildFields();
+		clearDialog();
+	}
 }
 
 function deleteFile(){
@@ -491,8 +506,11 @@ function loadFile(){
 	var ctx = document.getElementById("canvas").getContext("2d");
 	window.displays = [];
 	globalReferenceColor = j[name].referenceColor;
+	globalReferenceColorOff = j[name].referenceColorOff || {L: 0, a: 0, b: 0};
 	document.getElementById("defaultReference").value = formatRGB(Lab2RGB(globalReferenceColor), true);
+	document.getElementById("defaultReferenceOff").value = formatRGB(Lab2RGB(globalReferenceColorOff), true);
 	document.getElementById("defaultThreshold_output").value = document.getElementById("defaultThreshold").value = globalThreshold = j[name].threshold;
+	document.getElementById("defaultLabWeight_output").value = document.getElementById("defaultLabWeight").value = globalLabWeight = j[name].LabWeight;
 	document.getElementById("fields").innerHTML = "";
 	var conversionMatrix = mapSquareToQuad(pointArrayToMatrix(corners));
 	for(var i = 0; i < displays.length; i++){
@@ -516,6 +534,8 @@ function loadFile(){
 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || false;
 window.URL = window.URL || window.webkitURL || window.mozURL || false;
 
+var animationFrame = 0;
+
 document.addEventListener("DOMContentLoaded",function(){
 	if(location.search != "?prerec" && navigator.getUserMedia){
 		navigator.webkitGetUserMedia({audio:false, video:true}, function(stream){ 
@@ -524,7 +544,7 @@ document.addEventListener("DOMContentLoaded",function(){
 			console.log("Stream refused: " + err);
 		});
 	}
-	render();
+	animationFrame = requestAnimationFrame(render);
 	canvas.addEventListener("mousedown", function(event){
 		if(this.currentPoints){
 			var distance = 100000000;
@@ -578,13 +598,21 @@ document.addEventListener("DOMContentLoaded",function(){
 	}
 	document.getElementById("save").addEventListener("click", saveFile, false);
 	document.getElementById("load").addEventListener("click", loadFile, false);
+	document.getElementById("start_render").addEventListener("click", render, false);
+	document.getElementById("stop_render").addEventListener("click", function(){
+		cancelAnimationFrame(animationFrame);
+	}, false);
 	document.getElementById("delete").addEventListener("click", deleteFile, false);
+	document.getElementById("clear").addEventListener("click", clearFields, false);
 	document.getElementById("add").addEventListener("click", function(){
 		var type = document.getElementById("type").value;
 		var d = new Display(type, document.getElementById("canvas").getContext("2d"));
 		makeDialog(type);
 		startInput(type, d);
 	}, false);
+	document.getElementById("clearCorners").addEventListener("click", function(){
+		corners = false;
+	});
 	document.getElementById("setCorners").addEventListener("click", function(){
 		if(this.active){
 			document.getElementById("canvas").currentPoints = false;
@@ -595,6 +623,16 @@ document.addEventListener("DOMContentLoaded",function(){
 			dots = [];
 			localStorage.lastCorners = JSON.stringify(corners);
 		}else{
+			var setPoints = true;
+			if(corners == false){
+				corners = [
+					{x: 0, y: 0},
+					{x: 640, y: 0},
+					{x: 640, y: 480},
+					{x: 0, y: 480}
+				];
+				setPoints = false;
+			}
 			document.getElementById("canvas").currentPoints = corners;
 			shapePoints = corners;
 			shapeEnd = true;
@@ -606,10 +644,12 @@ document.addEventListener("DOMContentLoaded",function(){
 					if(displays[i].type == "string" || displays[i].type == "composite" || displays[i].type == "switch"){
 						continue;
 					}
-					var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
-					for(var j = 0; j < newPoints.length; j++){
-						displays[i].points[j].x = newPoints[j].x;
-						displays[i].points[j].y = newPoints[j].y;
+					if(setPoints){
+						var newPoints = matrixToPointArray(perstrans($M(displays[i].matrixPoints), conversionMatrix));
+						for(var j = 0; j < newPoints.length; j++){
+							displays[i].points[j].x = newPoints[j].x;
+							displays[i].points[j].y = newPoints[j].y;
+						}
 					}
 					if(displays[i].type == "7_segment"){
 						displays[i].corners = matrixToPointArray(perstrans($M(displays[i].matrixCorners), conversionMatrix));
@@ -627,6 +667,15 @@ document.addEventListener("DOMContentLoaded",function(){
                         }
                 }
 	}, false);
+	document.getElementById("defaultReferenceOff").addEventListener("change", function(){
+//		console.log(this.value);
+		globalReferenceColorOff = RGB2Lab(parseRGB(this.value));
+		if(document.getElementById("propogateDefaults").checked){
+			for(var i = 0; i < displays.length; i++){
+				displays[i].settings.referenceColorOff = globalReferenceColorOff;
+			}
+		}
+	}, false);
 	document.getElementById("defaultThreshold").addEventListener("change", function(){
 		globalThreshold = this.valueAsNumber;
 		document.getElementById("defaultThreshold_output").value = this.value;
@@ -636,9 +685,19 @@ document.addEventListener("DOMContentLoaded",function(){
 			}
 		}
 	}, false);
+	document.getElementById("defaultLabWeight").addEventListener("change", function(){
+		globalLabWeight = this.valueAsNumber;
+		document.getElementById("defaultLabWeight_output").value = this.value;
+		if(document.getElementById("propogateDefaults").checked){
+			for(var i = 0; i < displays.length; i++){
+				displays[i].settings.LabWeight = globalLabWeight;
+			}
+		}
+	}, false);
 }, false);
 
-var globalThreshold = 8;
+var globalThreshold = 1;
+var globalLabWeight = 1;
 
 function setAllDots(){
 	dots = [];
@@ -727,6 +786,7 @@ function checkCornerColors(){
 var totalFrames = 0;
 
 function render(){
+	cancelAnimationFrame(animationFrame); // Avoid running two render loops
 	var v = document.getElementById("img");
 	var ctx = document.getElementById("canvas").getContext("2d");
 	ctx.drawImage(v,0,0,640,480);
@@ -760,8 +820,7 @@ function render(){
 		ctx.fill();
 		ctx.stroke();
 	}
-	totalFrames++;
-	requestAnimationFrame(render);
+	animationFrame = requestAnimationFrame(render);
 }
 
 var shapePoints = [];
@@ -837,10 +896,10 @@ function buildInfo(field){
 	'<br>' +
 	(d.type == "string" ? "" : '<ol id="cPoints"></ol>' +
 	(d.corners ? '<ol id="cornerPoints"></ol>' : "") +
-	((d.type == "composite" || d.type == "switch") ? "" : 'Threshold <input type="range" id="threshold" min="0" step="0.5" max="150" value="'+d.settings.threshold+'"><output for="threshold" id="threshold_output" value="'+d.settings.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.settings.referenceColor), true) + '"/><br>') +
+	((d.type == "composite" || d.type == "switch") ? "" : 'Color/Lightness Weight <input type="range" id="Lab_weight" min="0" step="0.1" max="2" value="'+d.settings.LabWeight+'"><output for="Lab_weight" id="Lab_weight_output" value="'+d.settings.LabWeight+'"></output><br>On/Off Weight <input type="range" id="threshold" min="0" step="0.1" max="2" value="'+d.settings.threshold+'"><output for="threshold" id="threshold_output" value="'+d.settings.threshold+'"></output><br>Reference Color <input type="color" id="reference_color" value="' + formatRGB(Lab2RGB(d.settings.referenceColor), true) + '"/><br>Reference Color Off <input type="color" id="reference_color_off" value="' + formatRGB(Lab2RGB(d.settings.referenceColorOff || globalReferenceColorOff), true) + '"/><br>') +
 	'Field name: <select id="fieldName"><option value="" selected>(None)</option></select><br>' +
 	'<label for="collapse0">Collapse 0 to Blank</label><input type="checkbox" id="collapse0"' + (d.settings.collapse0 ? ' checked' : '') + '><br>') +
-	'<button id="delete">Delete</button>';
+	'<button id="deleteField">Delete</button>';
 	if(d.type != "string"){
 		if(d.type != "composite" && d.type != "switch"){
 			document.getElementById("threshold").addEventListener("change", function updateThreshold(){
@@ -848,9 +907,16 @@ function buildInfo(field){
 				document.getElementById("threshold_output").value = this.value;
 			}, false);
 			document.getElementById("threshold_output").value = d.settings.threshold;
+			document.getElementById("Lab_weight").addEventListener("change", function updateLabWeight(){
+				d.settings.LabWeight = this.valueAsNumber;
+				document.getElementById("Lab_weight_output").value = this.value;
+			}, false);
+			document.getElementById("Lab_weight_output").value = d.settings.LabWeight;
 			document.getElementById("reference_color").addEventListener("change", function updateReferenceColor(){
-				console.log("Updating reference color: " + this.value);
 				d.settings.referenceColor = RGB2Lab(parseRGB(this.value));
+			}, false);
+			document.getElementById("reference_color_off").addEventListener("change", function updateReferenceColorOff(){
+				d.settings.referenceColorOff = RGB2Lab(parseRGB(this.value));
 			}, false);
 		}
 		var select = document.getElementById("fieldName");
@@ -899,8 +965,8 @@ function buildInfo(field){
 			}
 		}
 	}, false);
-	document.getElementById("delete").addEventListener("click",function(){deleteField(this.number);rebuildFields();clearDialog();},false);
-	document.getElementById("delete").number = field.number;
+	document.getElementById("deleteField").addEventListener("click",function(){deleteField(this.number);rebuildFields();clearDialog();},false);
+	document.getElementById("deleteField").number = field.number;
 	dots = [];
 	shapePoints = [];
 	if(lineMatrices[d.type]){
@@ -917,6 +983,14 @@ function buildInfo(field){
 			li.className = "point";
 			if(d.type == "composite" || d.type == "switch"){
 				li.innerHTML = '<span class="name' + (i == d.settings.which ? " switch_on" : "") + '">'+displays[d.points[i]].settings.name+'</span> <span class="value"></span>';
+				if(d.type == "switch"){
+					li.i = i;
+					li.d = d;
+					li.addEventListener("click", function(){
+						this.d.settings.which = this.i;
+						updateValues();
+					}, false);
+				}
 			}else{
 				li.innerHTML = '<span class="name">'+d.points[i].x+", "+d.points[i].y+'</span> <span class="value"></span>';
 				li.x = d.points[i].x;
@@ -932,12 +1006,16 @@ function buildInfo(field){
 						dots = oldDots;
 					}
 				},false);
-				if(!cornerPoints){
+				//if(!cornerPoints){
 					li.addEventListener("click",function(){
 						var li = this;
+						var lis = li.parentNode.childNodes;
+						for(var i = 0; i < lis.length; i++){
+							lis[i].style.backgroundColor = "initial";
+						}
 						lockPoints = true;
 						document.getElementById("canvas").currentPoint = this.display.points[this.number];
-						dots = [document.getElementById("canvas").currentPoint];
+						dots = [this.display.points[this.number]];
 						li.style.backgroundColor = "#00CC00";
 						document.getElementById("canvas").nextEvent = function(){
 							this.currentPoint = false;
@@ -947,7 +1025,7 @@ function buildInfo(field){
 							buildInfo(field);
 						}
 					});
-				}
+				//}
 				dots.push(d.points[i]);
 			}
 			points.appendChild(li);
@@ -1113,10 +1191,6 @@ function updateValues(){
 				valueField.className = "value " + (i == d.settings.which ? "on" : "off");
 				valueField.innerHTML = value;
 				valueField.i = i;
-				valueField.addEventListener("click", function(){
-					d.settings.which = this.i;
-					updateValues();
-				}, false);
 			}else{
 				if(value){
 					valueField.className = "value on";
