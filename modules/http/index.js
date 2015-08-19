@@ -68,10 +68,6 @@ var exports = module.exports = function(config){
 		}
 	});
 	var io = this.io = socketio.listen(server);
-	io.configure(function(){
-		io.set("log level", 1);
-		io.set("transports", ["websocket", "xhr-polling"]);
-	});
 	server.listen(config.port, "0.0.0.0");
 	console.log("HTTP server listening on port "+config.port);
 	var drawNum = this.drawNum = 0;
