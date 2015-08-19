@@ -33,12 +33,12 @@
             }
             #canvas{
                 float: left;
-		cursor: crosshair;
+                cursor: crosshair;
                 -webkit-user-select: none;
             }
-	    #canvas:active{
-		cursor: none !important;
-	    }
+            #canvas:active{
+                cursor: none !important;
+            }
             #interface{
                 float: left;
             }
@@ -63,18 +63,19 @@
                     <option value="composite">Composite</option>
                     <option value="switch">Switch</option>
                 </select><br>
-		<button id="setCorners">Set Corners</button><button id="clearCorners">Clear Corners</button><br>
-		<button id="start_render">Start Render</button><button id="stop_render">Stop Render</button><br>
+                <button id="setCorners">Set Corners</button><button id="clearCorners">Clear Corners</button><br>
+                <button id="start_render">Start Render</button><button id="stop_render">Stop Render</button><br>
                 <select id="slot"><option value="NEW">New...</option></option><optgroup id="files"></optgroup></select><button id="save">Save</button><button id="load">Load</button><button id="delete">Delete</button><br>
                 <ul id="fields">
                     
                 </ul>
-		<button id="clear">Clear</button><br>
+                <button id="clear">Clear</button><br>
                 Default Reference: <input type="color" id="defaultReference"/><br>
-		Default Off-Reference: <input type="color" id="defaultReferenceOff"/><br>
+                Default Off-Reference: <input type="color" id="defaultReferenceOff"/><br>
                 Default On/Off Weight: <input type="range" id="defaultThreshold" min="0" step="0.1" max="2" value="1"><output for="defaultThreshold" id="defaultThreshold_output" value="1"></output><br>
                 Default Brightness Weight: <input type="range" id="defaultLabWeight" min="0" step="0.1" max="2" value="1"><output for="defaultLabWeight" id="defaultLabWeight_output" value="1"></output><br>
-		Propogate Defaults: <input type="checkbox" id="propogateDefaults"></input>
+                Propogate Defaults: <input type="checkbox" id="propogateDefaults"></input><br>
+                <button id="clearStorage">Clear All Settings</button>
             </div>
             <div id="divRight">
                 <div id="dialog">
