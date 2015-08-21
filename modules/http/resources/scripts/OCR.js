@@ -259,19 +259,17 @@ var Display = function(type, context, settings){
 };
 
 Display.prototype = {
-  getPointValue: function getPointValue(i){
-    if(this.points[i] !== undefined){
-      if(this.type == "composite" || this.type == "switch"){
+  getPointValue: function getPointValue (i) {
+    if (this.points[i] !== undefined) {
+      if (this.type == "composite" || this.type == "switch") {
         return displays[this.points[i]].getValue();
-      }else{
-//        console.log(this.context.getImageData(this.points[i].x - 1, this.points[i].y - 1, 3, 3));
+      } else {
         var Lab = interpolatePixels(this.context.getImageData(this.points[i].x - 0, this.points[i].y - 0, 1, 1).data);
         var difference1 = compareLab(this.settings.referenceColor, Lab, this.settings.LabWeight, 1) * this.settings.threshold;
         var difference2 = compareLab(this.settings.referenceColorOff || {L: 0, a: 0, b: 0}, Lab, this.settings.LabWeight, 1);
         return Math.abs(difference1) < Math.abs(difference2);
-//        return Math.abs(difference) < this.settings.threshold;
       }
-    }else{
+    } else {
       return false;
     }
   }
@@ -561,7 +559,7 @@ document.addEventListener("DOMContentLoaded",function(){
       this.currentPoint.y = event.offsetY;
     }
     if(this.downEvent){
-      this.downEvent();
+      this.downEvent(event);
     }
     this.mousedDown = true;
   }, false);
@@ -572,7 +570,7 @@ document.addEventListener("DOMContentLoaded",function(){
         this.currentPoint.y = event.offsetY;
       }
       if(this.moveEvent){
-        this.moveEvent();
+        this.moveEvent(event);
       }
     }
   }, false);
@@ -583,7 +581,7 @@ document.addEventListener("DOMContentLoaded",function(){
       this.currentPoint.y = event.offsetY;
     }
     if(this.nextEvent){
-      this.nextEvent();
+      this.nextEvent(event);
     }
   }, false);
   if(!localStorage.saves){
@@ -668,7 +666,6 @@ document.addEventListener("DOMContentLoaded",function(){
                 }
   }, false);
   document.getElementById("defaultReferenceOff").addEventListener("change", function(){
-//    console.log(this.value);
     globalReferenceColorOff = RGB2Lab(parseRGB(this.value));
     if(document.getElementById("propogateDefaults").checked){
       for(var i = 0; i < displays.length; i++){
@@ -676,6 +673,8 @@ document.addEventListener("DOMContentLoaded",function(){
       }
     }
   }, false);
+  document.getElementById("defaultReference").addEventListener("click", startEyedropper);
+  document.getElementById("defaultReferenceOff").addEventListener("click", startEyedropper);
   document.getElementById("defaultThreshold").addEventListener("change", function(){
     globalThreshold = this.valueAsNumber;
     document.getElementById("defaultThreshold_output").value = this.value;
@@ -744,7 +743,7 @@ function finishComposite(){
   buildingComposite = false;
 }
 
-function interpolatePixels(canvasImageData){
+function interpolatePixels(canvasImageData, keepRGB){
   var totalPixels = canvasImageData.length/4;
   var r = 0,
     g = 0,
@@ -757,11 +756,12 @@ function interpolatePixels(canvasImageData){
   r /= totalPixels;
   g /= totalPixels;
   b /= totalPixels;
-  return RGB2Lab({
+  var rgb = {
     r: r,
     g: g,
     b: b
-  });
+  };
+  return keepRGB ? rgb : RGB2Lab(rgb);
 }
 
 function makeDialog(type){
@@ -877,7 +877,7 @@ function zeroPad(str, count){
 }
 
 function formatRGB(rgb, showHash){
-  return (showHash ? "#" : "") + zeroPad(rgb.r.toString(16), 2) + zeroPad(rgb.g.toString(16), 2) + zeroPad(rgb.b.toString(16), 2);
+  return (showHash ? "#" : "") + zeroPad(Math.round(rgb.r).toString(16), 2) + zeroPad(Math.round(rgb.g).toString(16), 2) + zeroPad(Math.round(rgb.b).toString(16), 2);
 };
 
 function parseRGB(text){
@@ -888,6 +888,27 @@ function parseRGB(text){
     r: parseInt(text.substring(0, 2), 16),
     g: parseInt(text.substring(2, 4), 16),
     b: parseInt(text.substring(4, 6), 16)
+  }
+}
+
+function startEyedropper(ev) {
+  var self = this;
+  var canvas = document.getElementById("canvas");
+  var ctx = canvas.getContext("2d");
+  canvas.currentPoints = false;
+  if (this.active) {
+    this.active = false;
+    canvas.moveEvent = canvas.downEvent = false;
+  } else {
+    this.active = true;
+    canvas.moveEvent = canvas.downEvent = function(e) {
+      var val = interpolatePixels(ctx.getImageData(e.offsetX, e.offsetY, 1, 1).data, true);
+      self.value = formatRGB(val, true);
+      var evt = document.createEvent("HTMLEvents");
+      evt.initEvent("change", false, true);
+      self.dispatchEvent(evt);
+    }
+    ev.preventDefault();
   }
 }
 
@@ -918,9 +939,11 @@ function buildInfo(field){
         document.getElementById("Lab_weight_output").value = this.value;
       }, false);
       document.getElementById("Lab_weight_output").value = d.settings.LabWeight;
+      document.getElementById("reference_color").addEventListener("click", startEyedropper);
       document.getElementById("reference_color").addEventListener("change", function updateReferenceColor(){
         d.settings.referenceColor = RGB2Lab(parseRGB(this.value));
       }, false);
+      document.getElementById("reference_color_off").addEventListener("click", startEyedropper);
       document.getElementById("reference_color_off").addEventListener("change", function updateReferenceColorOff(){
         d.settings.referenceColorOff = RGB2Lab(parseRGB(this.value));
       }, false);
@@ -979,6 +1002,7 @@ function buildInfo(field){
     shapePoints = matrixToPointArray(perstrans(lineMatrices[d.type], mapSquareToQuad(pointArrayToMatrix(d.corners))));
   }
   var points = document.getElementById("cPoints");
+  points.className = "itype-" + d.type;
   var cornerPoints = document.getElementById("cornerPoints");
   if(points){
     points.display = d;

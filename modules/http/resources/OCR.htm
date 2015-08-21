@@ -31,16 +31,32 @@
                 list-style-type: none;
                 -webkit-margin-before: 0px;
             }
-            #canvas{
+            div#left {
                 float: left;
+            }
+            div#left div {
+                float: left;
+            }
+            #canvas{
                 cursor: crosshair;
                 -webkit-user-select: none;
+                display: block;
             }
             #canvas:active{
                 cursor: none !important;
             }
             #interface{
                 float: left;
+            }
+            ul {
+                padding: 0;
+            }
+            ol.itype-switch span.name {
+                -webkit-appearance: button;
+                padding: 3px;
+            }
+            * {
+                margin: 2px;
             }
         </style>
         <script src="/socket.io/socket.io.js"></script>
@@ -50,10 +66,11 @@
     </head>
     <body>
         <video src="test.mp4" id="img" hidden="hidden" loop="true" preload="all" autoplay="true" muted="muted" volume="0"></video>
-        <canvas id="canvas" height="480" width="640"></canvas><br>
-        <div id="interface">
-            <div id="divLeft">
-                <button id="add">Add Field</button><select id="type">
+        <div id="left">
+            <canvas id="canvas" height="480" width="640"></canvas>
+            <div id="left2">
+                <button id="add">Add Field</button>
+                <select id="type">
                     <option value="single">Single</option>
                     <option value="home_away">Home/Away</option>
                     <option value="2_segment">2-Segment</option>
@@ -66,16 +83,22 @@
                 <button id="setCorners">Set Corners</button><button id="clearCorners">Clear Corners</button><br>
                 <button id="start_render">Start Render</button><button id="stop_render">Stop Render</button><br>
                 <select id="slot"><option value="NEW">New...</option></option><optgroup id="files"></optgroup></select><button id="save">Save</button><button id="load">Load</button><button id="delete">Delete</button><br>
-                <ul id="fields">
-                    
-                </ul>
-                <button id="clear">Clear</button><br>
+            </div>
+            <div id="left-right">
                 Default Reference: <input type="color" id="defaultReference"/><br>
                 Default Off-Reference: <input type="color" id="defaultReferenceOff"/><br>
                 Default On/Off Weight: <input type="range" id="defaultThreshold" min="0" step="0.1" max="2" value="1"><output for="defaultThreshold" id="defaultThreshold_output" value="1"></output><br>
                 Default Brightness Weight: <input type="range" id="defaultLabWeight" min="0" step="0.1" max="2" value="1"><output for="defaultLabWeight" id="defaultLabWeight_output" value="1"></output><br>
                 Propogate Defaults: <input type="checkbox" id="propogateDefaults"></input><br>
                 <button id="clearStorage">Clear All Settings</button>
+            </div>
+        </div>
+        <div id="interface">
+            <div id="divLeft">
+                <ul id="fields">
+                    
+                </ul>
+                <button id="clear">Clear</button><br>
             </div>
             <div id="divRight">
                 <div id="dialog">
