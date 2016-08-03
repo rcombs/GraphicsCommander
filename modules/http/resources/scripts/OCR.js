@@ -309,6 +309,10 @@ var sevenSegmentMaps = [
     value: 6
   },
   {
+    map: [0, 1, 0, 1, 1, 1, 1],
+    value: 6
+  },
+  {
     map: [1, 0, 1, 0, 0, 1, 0],
     value: 7
   },
