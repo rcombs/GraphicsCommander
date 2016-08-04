@@ -616,6 +616,7 @@ document.addEventListener("DOMContentLoaded",function() {
     corners = false;
   });
   document.getElementById("setCorners").addEventListener("click", function() {
+    document.getElementById("canvas").currentPoint = false;
     if (this.active) {
       document.getElementById("canvas").currentPoints = false;
       shapePoints = [];
@@ -900,6 +901,7 @@ function startEyedropper(ev) {
   var canvas = document.getElementById("canvas");
   var ctx = canvas.getContext("2d");
   canvas.currentPoints = false;
+  canvas.currentPoint = false;
   if (this.active) {
     this.active = false;
     canvas.moveEvent = canvas.downEvent = false;
@@ -976,6 +978,7 @@ function buildInfo(field) {
     }, false);
   }
   document.getElementById("setFieldCorners").addEventListener("click", function() {
+    document.getElementById("canvas").currentPoint = false;
     if (this.active) {
       this.innerHTML = "Set Field Corners";
       this.active = false;
