@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="favicon.png"/>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+"use strict";
+var speed = 3;
+var width = 1920;
+var socket = io.connect();
+socket.on("state",function(s){
+    if('totalMoney' in s){document.getElementById("totalMoney").innerText = s.totalMoney;}
+    if('tickerText' in s){document.getElementById("ticker").innerText = s.tickerText;}
+    if('mainCountdown'  in s){document.getElementById("mainCountdown").innerText = msToTime(s.mainCountdown);}
+});
+function zeroPad(num, numZeros) {
+        var n = Math.abs(num);
+        var zeros = Math.max(0, numZeros - Math.floor(n).toString().length );
+        var zeroString = Math.pow(10,zeros).toString().substr(1);
+        if( num < 0 ) {
+                zeroString = '-' + zeroString;
+        }
+
+        return zeroString+n;
+}
+function msToTime(ms){
+	var x = Math.floor(ms / 1000);
+		var seconds = x % 60;
+		x = Math.floor(x / 60);
+		var minutes = x % 60;
+		x = Math.floor(x / 60);
+		var hours = x;
+		var str = zeroPad(hours, 2) + ":" + zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
+		return str;
+}
+function updateTicker() {
+    var el = document.getElementById('ticker');
+    if (el) {
+        var left = parseInt(el.style.left);
+        left -= speed;
+        if (left + el.scrollWidth < 0)
+            left = width;
+        el.style.left = left + 'px';
+    }
+    requestAnimationFrame(updateTicker);
+}
+requestAnimationFrame(updateTicker);
+        </script>
+        <title>CasparCG Rockathon Interface</title>
+        <style>
+            #top-center {
+                position: absolute;
+                top: 40px;
+                left: 0;
+                right: 0;
+                text-align: center;
+                color: yellow;
+                font-family: Verdana;
+                -webkit-text-stroke: 5px blue;
+                font-size: 70px;
+                font-weight: bold;
+            }
+            #top-left {
+                position: absolute;
+                top: 40px;
+                left: 120px;
+                text-align: left;
+                color: white;
+                font-family: Verdana;
+                -webkit-text-stroke: 3px black;
+                font-size: 70px;
+                font-weight: bold;
+            }
+            #top-right {
+                position: absolute;
+                top: 40px;
+                right: 120px;
+                text-align: right;
+                color: white;
+                font-family: Verdana;
+                -webkit-text-stroke: 3px black;
+                font-size: 70px;
+                font-weight: bold;
+            }
+            #ticker {
+                position: absolute;
+                bottom: 40px;
+                text-align: left;
+                color: white;
+                font-family: Verdana;
+                -webkit-text-stroke: 3px black;
+                font-size: 50px;
+                font-weight: bold;
+                width: auto;
+                white-space: nowrap;
+            }
+            html, body {
+                width: 1920px;
+                height: 1080px;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="top-center">
+        ROCK-A-THON 2018<br>
+        708-482-9585
+        </div>
+        <div id="top-left">
+            <span id="mainCountdown"></span>
+        </div>
+        <div id="top-right">
+            $<span id="totalMoney"></span>
+        </div>
+        <span id="ticker" style="left: 1920px;"></span>
+    </body>
+</html>

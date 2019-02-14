@@ -18,7 +18,7 @@ function formatTime(time){
 	var totalMinutes = totalSeconds / 60 | 0;
 	var minutes = totalMinutes % 60;
 	var hours = totalMinutes / 60 | 0;
-	return (hours ? hours + ":") + zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
+	return (hours ? hours + ":" : "") + zeroPad(minutes, 2) + ":" + zeroPad(seconds, 2);
 }
 
 var exports = module.exports = function(config){
@@ -28,14 +28,16 @@ var exports = module.exports = function(config){
 	setInterval(function(){
 		var send = false;
 		var flags = {};
-		for(var i in self.config.counters){
-			var cd = self.config.counters[i];
+		for(var i in self.counters){
+			var cd = self.counters[i];
 			if(cd < 0){
 				// NEGATIVE = COUNTUP
-				flags[i] = formatTime(Math.max((new Date()).getTime() - cd, 0));
+				flags[i] = Math.max((new Date()).getTime() - cd, 0);
+                flags[i + 'Text'] = formatTime(flags[i]);
 			}else{
 				// POSITIVE = COUNTDOWN
-				flags[i] = formatTime(Math.max(cd - (new Date()).getTime(), 0));
+				flags[i] = Math.max(cd - (new Date()).getTime(), 0);
+                flags[i + 'Text'] = formatTime(flags[i]);
 			}
 		}
 		self.emit("flags", flags);

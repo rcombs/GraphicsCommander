@@ -5,10 +5,11 @@
         <script src="/socket.io/socket.io.js"></script>
         <script>
 "use strict";
+var first = true;
 var socket = io.connect();
 socket.on("state",function(s){
     if('totalMoney' in s){document.getElementById("totalMoney").value = s.totalMoney;}
-    if('tickerText' in s){document.getElementById("ticker").value = s.tickerText;}
+    if('tickerText' in s && first && s.tickerText.length){document.getElementById("ticker").value = s.tickerText; first = false;}
     if('countdown'  in s){document.getElementById("countdown").value = msToTime(s.countdown);}
     if('countdownRunning' in s){document.getElementById("countdownRunning").checked = s.countdownRunning;}
     if('showCountdown' in s){document.getElementById("showCountdown").checked = s.showCountdown;}
